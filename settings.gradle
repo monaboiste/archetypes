@@ -1,0 +1,13 @@
+rootProject.name = "archetypes"
+
+include("common")
+include("quantity")
+include("accounting")
+include("pricing")
+include("product")
+include("party")
+include("inventory")
+include("ordering")
+include("graphs")
+include("rules")
+include("planvsexecution")

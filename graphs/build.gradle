@@ -1,0 +1,9 @@
+dependencies {
+    implementation project(":common")
+    implementation project(":quantity")
+    implementation libs.jgrapht.core
+    testImplementation libs.junit.jupiter.api
+    testRuntimeOnly libs.junit.jupiter.engine
+    testRuntimeOnly libs.junit.platform.launcher
+    testImplementation libs.commons.lang3
+}

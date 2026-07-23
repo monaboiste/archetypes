@@ -1,0 +1,10 @@
+dependencies {
+    implementation project(":common")
+    implementation project(":quantity")
+    compileOnly libs.jetbrains.annotations
+    testImplementation libs.junit.jupiter.api
+    testRuntimeOnly libs.junit.jupiter.engine
+    testRuntimeOnly libs.junit.platform.launcher
+    testImplementation libs.assertj.core
+    testImplementation libs.commons.lang3
+}
