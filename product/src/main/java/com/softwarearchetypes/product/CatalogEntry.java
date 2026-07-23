@@ -28,6 +28,17 @@ class CatalogEntry {
     private final Set<String> categories;
     private final Validity validity;
     private final Map<String, String> metadata;
+    /**
+     * Sales-context constraint: conditions under which this specific catalog entry is available.
+     *
+     * <p>Use this for restrictions that stem from the commercial offering rather than from the
+     * product definition — city, channel, day-of-week, operational readiness (e.g. equipment
+     * up/down), campaign periods, etc.
+     *
+     * <p>Intrinsic product restrictions (health rules, legal requirements, physical preconditions)
+     * belong on {@link Product#applicabilityConstraint()} instead — see L08.
+     */
+    private final ApplicabilityConstraint salesConstraint;
 
     private CatalogEntry(CatalogEntryId id,
                         String displayName,
@@ -35,12 +46,14 @@ class CatalogEntry {
                         Product product,
                         Set<String> categories,
                         Validity validity,
-                        Map<String, String> metadata) {
+                        Map<String, String> metadata,
+                        ApplicabilityConstraint salesConstraint) {
         checkArgument(id != null, "CatalogEntryId must be defined");
         checkArgument(displayName != null && !displayName.isBlank(), "Display name must be defined");
         checkArgument(description != null && !description.isBlank(), "Description must be defined");
         checkArgument(product != null, "Product must be defined");
         checkArgument(validity != null, "Validity must be defined");
+        checkArgument(salesConstraint != null, "salesConstraint must be defined");
 
         this.id = id;
         this.displayName = displayName;
@@ -49,6 +62,7 @@ class CatalogEntry {
         this.categories = categories != null ? Set.copyOf(categories) : Set.of();
         this.validity = validity;
         this.metadata = metadata != null ? Map.copyOf(metadata) : Map.of();
+        this.salesConstraint = salesConstraint;
     }
 
     static Builder builder() {
@@ -83,11 +97,34 @@ class CatalogEntry {
         return metadata;
     }
 
+    ApplicabilityConstraint salesConstraint() {
+        return salesConstraint;
+    }
+
     /**
      * Checks if entry is available for purchase at given date.
      */
     boolean isAvailableAt(LocalDate date) {
         return validity.isValidAt(date);
+    }
+
+    /**
+     * Checks full commercial availability: validity window, sales-context constraint, and the
+     * product's own applicability constraint.
+     *
+     * <p>All three gates must pass:
+     * <ol>
+     *   <li>{@link Validity} — the entry is within its active date window.
+     *   <li>{@code salesConstraint} — the commercial context is met (city, channel,
+     *       operational readiness, day-of-week, etc.).
+     *   <li>{@link Product#applicabilityConstraint()} — the product's intrinsic rules are
+     *       satisfied (health declarations, legal requirements, physical preconditions).
+     * </ol>
+     */
+    boolean isAvailableFor(ApplicabilityContext context, LocalDate date) {
+        return validity.isValidAt(date)
+                && salesConstraint.isSatisfiedBy(context)
+                && product.isApplicableFor(context);
     }
 
     /**
@@ -129,7 +166,8 @@ class CatalogEntry {
             product,
             categories,
             newValidity,
-            metadata
+            metadata,
+            salesConstraint
         );
     }
 
@@ -144,7 +182,8 @@ class CatalogEntry {
             product,
             categories,
             validity,
-            newMetadata
+            newMetadata,
+            salesConstraint
         );
     }
 
@@ -175,6 +214,7 @@ class CatalogEntry {
         private Set<String> categories = new HashSet<>();
         private Validity validity;
         private Map<String, String> metadata = new HashMap<>();
+        private ApplicabilityConstraint salesConstraint = ApplicabilityConstraint.alwaysTrue();
 
         Builder id(CatalogEntryId id) {
             this.id = id;
@@ -221,6 +261,11 @@ class CatalogEntry {
             return this;
         }
 
+        Builder salesConstraint(ApplicabilityConstraint salesConstraint) {
+            this.salesConstraint = salesConstraint;
+            return this;
+        }
+
         CatalogEntry build() {
             return new CatalogEntry(
                 id,
@@ -229,7 +274,8 @@ class CatalogEntry {
                 product,
                 categories,
                 validity,
-                metadata
+                metadata,
+                salesConstraint
             );
         }
     }
