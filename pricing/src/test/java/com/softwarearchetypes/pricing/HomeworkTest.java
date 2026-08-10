@@ -5,10 +5,11 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 
 import com.softwarearchetypes.quantity.money.Money;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.softwarearchetypes.pricing.ApplicabilityConstraint.greaterThanOrEqualTo;
@@ -40,7 +41,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *   │   └── insurance-component     — 0.15% od insured-value
  *   └── vat-component               — 23% od netto
  */
-@Disabled //TODO enable when finished
 class HomeworkTest {
 
     static final Instant NOW = LocalDateTime.of(2025, 1, 15, 12, 50).atZone(ZoneId.systemDefault()).toInstant();
@@ -50,7 +50,129 @@ class HomeworkTest {
 
     @BeforeEach
     void setUp() {
-       //TODO: do uzupełnienia
+        LocalDateTime januaryFirst = LocalDateTime.of(2025, 1, 1, 0, 0);
+        LocalDateTime aprilFirst = LocalDateTime.of(2025, 4, 1, 0, 0);
+
+        // Interpretation and Adapter patterns: UNIT rates are converted to TOTAL amounts using weight as quantity.
+        Calculator lightRate = facade.addCalculator("base-rate-light", CalculatorType.SIMPLE_FIXED,
+                Parameters.of(
+                        "amount", Money.pln("7.90"),
+                        "interpretation", Interpretation.UNIT));
+        Calculator mediumRate = facade.addCalculator("base-rate-medium", CalculatorType.SIMPLE_FIXED,
+                Parameters.of(
+                        "amount", Money.pln("6.10"),
+                        "interpretation", Interpretation.UNIT));
+        Calculator heavyRate = facade.addCalculator("base-rate-heavy", CalculatorType.SIMPLE_FIXED,
+                Parameters.of(
+                        "amount", Money.pln("5.20"),
+                        "interpretation", Interpretation.UNIT));
+
+        // Composite Function pattern: half-open ranges select one weight-dependent unit-rate calculator.
+        facade.addCalculator("base-by-weight", CalculatorType.COMPOSITE,
+                Parameters.of(
+                        "ranges", List.of(
+                                CalculatorRange.numeric(
+                                        new BigDecimal("1"), new BigDecimal("5"), lightRate.getId()),
+                                CalculatorRange.numeric(
+                                        new BigDecimal("5"), new BigDecimal("30"), mediumRate.getId()),
+                                CalculatorRange.numeric(
+                                        new BigDecimal("30"), new BigDecimal("70"), heavyRate.getId())),
+                        "rangeSelector", "quantity"));
+
+        facade.addCalculator("fuel-rate-4.5", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("4.5")));
+        facade.addCalculator("fuel-rate-5.0", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("5.0")));
+        facade.addCalculator("adr-rate", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("50")));
+        facade.addCalculator("oversized-rate", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("35")));
+        facade.addCalculator("time-window-rate", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("25")));
+        facade.addCalculator("cod-rate", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("2")));
+        facade.addCalculator("insurance-rate", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("0.15")));
+        facade.addCalculator("vat-rate", CalculatorType.PERCENTAGE,
+                Parameters.of("percentageRate", new BigDecimal("23")));
+
+        facade.createSimpleComponent(
+                "base-component",
+                "base-by-weight",
+                Map.of("weight", "quantity"),
+                Validity.from(januaryFirst));
+
+        // Component Version pattern: validity periods select the historical fuel rate using timestamp.
+        facade.createSimpleComponent(
+                "fuel-component",
+                "fuel-rate-4.5",
+                Map.of(),
+                Validity.between(januaryFirst, aprilFirst));
+        facade.createSimpleComponent(
+                "fuel-component",
+                "fuel-rate-5.0",
+                Map.of(),
+                Validity.from(aprilFirst));
+
+        // Applicability Rule pattern: business eligibility remains separate from percentage calculations.
+        facade.createSimpleComponent(
+                "adr-component",
+                "adr-rate",
+                Map.of(),
+                ApplicabilityConstraint.equalsTo("cargo-type", "hazmat"),
+                Validity.from(januaryFirst));
+        facade.createSimpleComponent(
+                "oversized-component",
+                "oversized-rate",
+                Map.of(),
+                greaterThanOrEqualTo("weight", 30),
+                Validity.from(januaryFirst));
+        facade.createSimpleComponent(
+                "time-window-component",
+                "time-window-rate",
+                Map.of(),
+                ApplicabilityConstraint.equalsTo("delivery-type", "time-window"),
+                Validity.from(januaryFirst));
+
+        facade.createSimpleComponent(
+                "cod-component",
+                "cod-rate",
+                Map.of("cod-value", "baseAmount"),
+                Validity.from(januaryFirst));
+        facade.createSimpleComponent(
+                "insurance-component",
+                "insurance-rate",
+                Map.of("insured-value", "baseAmount"),
+                Validity.from(januaryFirst));
+        facade.createSimpleComponent(
+                "vat-component",
+                "vat-rate",
+                Map.of(),
+                Validity.from(januaryFirst));
+
+        // Composite Component pattern: dependencies feed earlier semantic component values into later calculators.
+        facade.createCompositeComponent(
+                "netto",
+                Map.of(
+                        "fuel-component", Map.of("baseAmount", new ValueOf("base-component")),
+                        "adr-component", Map.of("baseAmount", new ValueOf("base-component")),
+                        "oversized-component", Map.of("baseAmount", new ValueOf("base-component")),
+                        "time-window-component", Map.of("baseAmount", new ValueOf("base-component"))),
+                Validity.from(januaryFirst),
+                "base-component",
+                "fuel-component",
+                "adr-component",
+                "oversized-component",
+                "time-window-component",
+                "cod-component",
+                "insurance-component");
+
+        facade.createCompositeComponent(
+                "total-cost",
+                Map.of("vat-component", Map.of("baseAmount", new ValueOf("netto"))),
+                Validity.from(januaryFirst),
+                "netto",
+                "vat-component");
     }
 
     // ============================================================
