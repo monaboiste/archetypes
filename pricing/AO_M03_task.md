@@ -2,7 +2,7 @@
 
 ## 1. Business Background
 
-SwiftShip is a courier company that prices shipments based on their attributes (e.g., weight, cargo type, delivery
+SwiftShip is a carrier company that prices shipments based on their attributes (e.g., weight, cargo type, delivery
 method) and additional services (e.g., cash on delivery, insurance). Some rates may change over time — therefore, the
 time of valuation also matters.
 
@@ -93,10 +93,10 @@ base price.
 
 These line items are calculated from monetary values provided by the customer. They do not depend on the base price.
 
-| Fee | Rate | Calculation Base | Parameter Description |
-| :--- | :--- | :--- | :--- |
-| **COD (Cash on Delivery)** | 2% | `cod-value` | Cash on delivery amount — how much the courier collects from the recipient |
-| **Insurance** | 0.15% | `insured-value` | Insured value — the amount for which the shipment is insured |
+| Fee | Rate | Calculation Base | Parameter Description                                                      |
+| :--- | :--- | :--- |:---------------------------------------------------------------------------|
+| **COD (Cash on Delivery)** | 2% | `cod-value` | Cash on delivery amount — how much the carrier collects from the recipient |
+| **Insurance** | 0.15% | `insured-value` | Insured value — the amount for which the shipment is insured               |
 
 **Input parameters:**
 
