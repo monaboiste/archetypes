@@ -1,11 +1,9 @@
-package com.softwarearchetypes.rules.discounting.config.reflection;
+package com.softwarearchetypes.rules.core.config.reflection;
 
-import com.softwarearchetypes.quantity.money.Money;
-import com.softwarearchetypes.quantity.money.Percentage;
-import com.softwarearchetypes.rules.predicates.AndPredicate;
-import com.softwarearchetypes.rules.predicates.LogicalPredicate;
-import com.softwarearchetypes.rules.predicates.NotPredicate;
-import com.softwarearchetypes.rules.predicates.OrPredicate;
+import com.softwarearchetypes.rules.core.predicates.AndPredicate;
+import com.softwarearchetypes.rules.core.predicates.LogicalPredicate;
+import com.softwarearchetypes.rules.core.predicates.NotPredicate;
+import com.softwarearchetypes.rules.core.predicates.OrPredicate;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -15,17 +13,22 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+// Rebuilds a rule from stored parameters. Reflection instantiates a type from a stable key and casts
+// it to a known interface; it never invokes a method named by user input.
+// Value objects are delegated to registered ValueCodecs, which is what keeps this class domain-free.
 public class ReflectionBeanReader {
 
     private final Map<String, String> props;
+    private final List<ValueCodec> codecs;
 
-    public ReflectionBeanReader(Map<String, String> props) {
+    public ReflectionBeanReader(Map<String, String> props, List<ValueCodec> codecs) {
         this.props = Objects.requireNonNull(props);
+        this.codecs = List.copyOf(codecs);
     }
-
 
     public <T> T readBean(String prefix, Class<T> expectedType) {
         String classKey = prefix + ".class";
@@ -50,17 +53,12 @@ public class ReflectionBeanReader {
         @SuppressWarnings("unchecked")
         Class<? extends T> clazz = (Class<? extends T>) rawClass;
 
-        // specjalne typy Value Object
-        if (Money.class.isAssignableFrom(clazz)) {
+        // domain value objects - handled by a plugin, before the record/pojo branches
+        ValueCodec codec = codecFor(clazz);
+        if (codec != null) {
             @SuppressWarnings("unchecked")
-            T money = (T) readMoney(prefix);
-            return money;
-        }
-
-        if (Percentage.class.isAssignableFrom(clazz)) {
-            @SuppressWarnings("unchecked")
-            T percentage = (T) readPercentage(prefix);
-            return percentage;
+            T value = (T) codec.read(prefix, props);
+            return value;
         }
 
         if (LogicalPredicate.class.isAssignableFrom(clazz)) {
@@ -69,14 +67,13 @@ public class ReflectionBeanReader {
             return predicate;
         }
 
-        // rekord vs zwykła klasa
+        // record vs ordinary class
         if (clazz.isRecord()) {
             return instantiateRecord(prefix, clazz);
         } else {
             return instantiatePojo(prefix, clazz);
         }
     }
-
 
     private <T> T instantiateRecord(String prefix, Class<T> clazz) {
         var components = clazz.getRecordComponents();
@@ -106,7 +103,7 @@ public class ReflectionBeanReader {
 
         for (int i = 0; i < params.length; i++) {
             Parameter p = params[i];
-            String paramName = p.getName(); // wymaga -parameters przy kompilacji !!!!!!!!!!!!!!!!!!!
+            String paramName = p.getName(); // requires the -parameters compiler flag
             Class<?> paramType = p.getType();
 
             String simpleKey = prefix + "." + paramName;
@@ -125,25 +122,20 @@ public class ReflectionBeanReader {
                 continue;
             }
 
-            // 2) Money
-            if (Money.class.isAssignableFrom(paramType)) {
-                args[i] = readMoney(simpleKey);
+            // 2) domain value object with a registered codec
+            ValueCodec codec = codecFor(paramType);
+            if (codec != null) {
+                args[i] = codec.read(simpleKey, props);
                 continue;
             }
 
-            // 3) Percentage
-            if (Percentage.class.isAssignableFrom(paramType)) {
-                args[i] = readPercentage(simpleKey);
-                continue;
-            }
-
-            // 4) LogicalPredicate – tree : .root and nX.*
+            // 3) LogicalPredicate - tree: .root and nX.*
             if (LogicalPredicate.class.isAssignableFrom(paramType)) {
                 args[i] = readLogicalPredicate(simpleKey);
                 continue;
             }
 
-            // 5) nested beam, should have prefix.paramName.class
+            // 4) nested bean, should have prefix.paramName.class
             if (props.containsKey(simpleKey + ".class")) {
                 args[i] = readBean(simpleKey, paramType);
                 continue;
@@ -178,42 +170,10 @@ public class ReflectionBeanReader {
         }
         // can add logic @Inject / @JsonCreator
         throw new IllegalStateException("Class " + clazz.getName()
-                + " has many constructors – specify it in ReflectionBeanReader");
+                + " has many constructors - specify it in ReflectionBeanReader");
     }
-
-    private Money readMoney(String prefix) {
-        String amountKey = prefix + ".money.amount";
-        String currencyKey = prefix + ".money.currency";
-
-        String amountStr = props.get(amountKey);
-        String currCode = props.get(currencyKey);
-
-        if (amountStr == null || currCode == null) {
-            throw new IllegalArgumentException("No money data at: '" + prefix +
-                    "' (expected " + amountKey + " i " + currencyKey + ")");
-        }
-
-        BigDecimal amount = new BigDecimal(amountStr);
-
-        return Money.of(amount, currCode);
-    }
-
-    private Percentage readPercentage(String prefix) {
-        String key = prefix + ".percentage.value";
-        String valueStr = props.get(key);
-        if (valueStr == null) {
-            throw new IllegalArgumentException("No percentage value at: '" + key + "'");
-        }
-
-        BigDecimal val = new BigDecimal(valueStr);
-
-        return Percentage.of(val);
-    }
-
-
 
     /**
-     *
      * prefix.root = n1
      * prefix.n1.type  = AND / OR / NOT / LEAF
      * prefix.n1.left  = n2
@@ -265,7 +225,7 @@ public class ReflectionBeanReader {
                 yield new NotPredicate<>(child);
             }
             case "LEAF" -> {
-                // save as simple bean
+                // saved as a simple bean:
                 // nodePrefix.class = ...
                 // nodePrefix.<paramName> = ...
                 String className = props.get(nodePrefix + ".class");
@@ -274,7 +234,7 @@ public class ReflectionBeanReader {
                 }
                 try {
                     Class<?> leafClass = Class.forName(className);
-                    Object bean = instantiatePojo(nodePrefix, leafClass); // or instantiateRecord, if rekord
+                    Object bean = instantiatePojo(nodePrefix, leafClass);
                     if (!(bean instanceof LogicalPredicate<?> lp)) {
                         throw new IllegalArgumentException("Leaf " + nodePrefix + " of class " + className +
                                 " does not implement LogicalPredicate");
@@ -289,6 +249,14 @@ public class ReflectionBeanReader {
         };
     }
 
+    private ValueCodec codecFor(Class<?> type) {
+        for (ValueCodec codec : codecs) {
+            if (codec.supports(type)) {
+                return codec;
+            }
+        }
+        return null;
+    }
 
     private boolean isSimpleType(Class<?> type) {
         return type.isPrimitive()
@@ -314,13 +282,9 @@ public class ReflectionBeanReader {
             return convertSimple(raw, targetType);
         }
 
-        // expecting: typu key.class, key.money.*, key.percentage.*, ...
-        if (Money.class.isAssignableFrom(targetType)) {
-            return readMoney(key);
-        }
-
-        if (Percentage.class.isAssignableFrom(targetType)) {
-            return readPercentage(key);
+        ValueCodec codec = codecFor(targetType);
+        if (codec != null) {
+            return codec.read(key, props);
         }
 
         if (LogicalPredicate.class.isAssignableFrom(targetType)) {
@@ -331,7 +295,6 @@ public class ReflectionBeanReader {
             return readBean(key, targetType);
         }
 
-        // null or exception?
         if (targetType.isPrimitive()) {
             throw new IllegalArgumentException("No config for primitive: " + key);
         }
@@ -369,7 +332,7 @@ public class ReflectionBeanReader {
             try {
                 return LocalDate.parse(raw);
             } catch (DateTimeParseException e) {
-                throw new IllegalArgumentException("Illegal date  (LocalDate): " + raw, e);
+                throw new IllegalArgumentException("Illegal date (LocalDate): " + raw, e);
             }
         }
         if (targetType == LocalDateTime.class) {
@@ -383,3 +346,4 @@ public class ReflectionBeanReader {
         throw new IllegalArgumentException("Unsuported type: " + targetType.getName());
     }
 }
+    

@@ -2,14 +2,17 @@ package com.softwarearchetypes.rules.discounting.config;
 
 import com.softwarearchetypes.quantity.money.Money;
 import com.softwarearchetypes.quantity.money.Percentage;
-import com.softwarearchetypes.rules.discounting.OfferItemModifier;
+import com.softwarearchetypes.rules.core.ConfigurableModifier;
+import com.softwarearchetypes.rules.core.Modifier;
+import com.softwarearchetypes.rules.core.selection.CandidateRule;
 import com.softwarearchetypes.rules.discounting.client.ClientContext;
 import com.softwarearchetypes.rules.discounting.client.ClientFinder;
 import com.softwarearchetypes.rules.discounting.client.ClientStatus;
 import com.softwarearchetypes.rules.discounting.client.rules.ExpensesRule;
 import com.softwarearchetypes.rules.discounting.client.rules.StatusRule;
 import com.softwarearchetypes.rules.discounting.client.rules.TimeBeingCustomer;
-import com.softwarearchetypes.rules.discounting.offer.modifiers.ConfigurableItemModifier;
+import com.softwarearchetypes.rules.discounting.offer.OfferItem;
+import com.softwarearchetypes.rules.discounting.offer.PriceChangeApplicator;
 import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.applier.PercentageFromBase;
 import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.guardians.EmptyGuardian;
 import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.predicates.ItemIdPredicate;
@@ -17,11 +20,14 @@ import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.predica
 import com.softwarearchetypes.rules.discounting.stock.InventoryFinder;
 import com.softwarearchetypes.rules.discounting.stock.ProductStock;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
-public class SampleDynamicConfig implements ConfigProvider{
+// Same core blocks, but which rules exist and with what parameters is computed at runtime from
+// current inventory and customer statistics. Only the selection layer changed - Decision Support
+// in the DDD large-scale model; the modifiers themselves stayed stable.
+public class SampleDynamicConfig implements ConfigProvider {
 
     private final InventoryFinder inventoryFinder;
     private final ClientFinder clientFinder;
@@ -32,35 +38,37 @@ public class SampleDynamicConfig implements ConfigProvider{
     }
 
     @Override
-    public Map<OfferItemModifier, Predicate<ClientContext>> loadConfig() {
-        Map<OfferItemModifier, Predicate<ClientContext>> configuration = new HashMap<>();
+    public List<CandidateRule<ClientContext, OfferItem>> load() {
+        List<CandidateRule<ClientContext, OfferItem>> configuration = new ArrayList<>();
 
         for (ProductStock stock : inventoryFinder.findOverstockedProducts()) {
             Percentage discount = calculateDiscountFor(stock);
 
-            OfferItemModifier overstockModifier = new ConfigurableItemModifier(
+            Modifier<OfferItem> overstockModifier = new ConfigurableModifier<OfferItem, Money>(
                     "Overstock promo for " + stock.productId(),
                     new ItemIdPredicate(stock.productId()),
                     new PercentageFromBase(discount),
-                    EmptyGuardian.INSTANCE
+                    EmptyGuardian.INSTANCE,
+                    PriceChangeApplicator.INSTANCE
             );
 
-            Predicate<ClientContext> appliesToEveryone = client -> true;
+            Predicate<ClientContext> appliesToEveryone = _ -> true;
 
-            configuration.put(overstockModifier, appliesToEveryone);
+            configuration.add(new CandidateRule<>(overstockModifier, appliesToEveryone));
         }
 
 
-        long vipCount  = clientFinder.countVipClients();
-        long allCount  = clientFinder.countAllClients();
+        long vipCount = clientFinder.countVipClients();
+        long allCount = clientFinder.countAllClients();
         double vipRatio = allCount == 0 ? 0.0 : (double) vipCount / allCount;
 
         if (vipRatio < 0.05) {
-            OfferItemModifier growVipBaseModifier = new ConfigurableItemModifier(
+            Modifier<OfferItem> growVipBaseModifier = new ConfigurableModifier<OfferItem, Money>(
                     "Grow VIP base - strong promo",
                     new MoreExpensiveThanPredicate(Money.pln(50)),
                     new PercentageFromBase(Percentage.of(20)),
-                    EmptyGuardian.INSTANCE
+                    EmptyGuardian.INSTANCE,
+                    PriceChangeApplicator.INSTANCE
             );
 
 
@@ -68,20 +76,21 @@ public class SampleDynamicConfig implements ConfigProvider{
                     StatusRule.of(ClientStatus.STANDARD)
                             .and(ExpensesRule.of(Money.pln(1000)));
 
-            configuration.put(growVipBaseModifier, targetRegularsWithPotential);
+            configuration.add(new CandidateRule<>(growVipBaseModifier, targetRegularsWithPotential));
         } else {
-            OfferItemModifier vipRetentionModifier = new ConfigurableItemModifier(
+            Modifier<OfferItem> vipRetentionModifier = new ConfigurableModifier<OfferItem, Money>(
                     "VIP retention promo",
                     new MoreExpensiveThanPredicate(Money.pln(100)),
                     new PercentageFromBase(Percentage.of(10)),
-                    EmptyGuardian.INSTANCE
+                    EmptyGuardian.INSTANCE,
+                    PriceChangeApplicator.INSTANCE
             );
 
             Predicate<ClientContext> oldVipClients =
                     StatusRule.of(ClientStatus.VIP)
                             .and(TimeBeingCustomer.ofYears(3));
 
-            configuration.put(vipRetentionModifier, oldVipClients);
+            configuration.add(new CandidateRule<>(vipRetentionModifier, oldVipClients));
         }
 
         return configuration;
@@ -94,7 +103,7 @@ public class SampleDynamicConfig implements ConfigProvider{
     private Percentage calculateDiscountFor(ProductStock stock) {
         int base = 5;
         int extraFromQuantity = stock.quantity().amount().doubleValue() > 500 ? 10 : stock.quantity().amount().doubleValue() > 200 ? 5 : 0;
-        int extraFromDays     = stock.daysInStock() > 90 ? 10 : stock.daysInStock() > 30 ? 5 : 0;
+        int extraFromDays = stock.daysInStock() > 90 ? 10 : stock.daysInStock() > 30 ? 5 : 0;
 
         int total = Math.min(30, base + extraFromQuantity + extraFromDays); // max 30%
         return Percentage.of(total);

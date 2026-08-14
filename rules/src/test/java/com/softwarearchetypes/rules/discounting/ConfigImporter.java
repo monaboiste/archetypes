@@ -1,51 +1,57 @@
 package com.softwarearchetypes.rules.discounting;
 
+import com.softwarearchetypes.rules.core.Modifier;
+import com.softwarearchetypes.rules.core.config.ConfigKeys;
+import com.softwarearchetypes.rules.core.config.RuleDefinition;
+import com.softwarearchetypes.rules.core.config.RuleDefinitionRepository;
+import com.softwarearchetypes.rules.core.config.RuleParam;
+import com.softwarearchetypes.rules.core.config.reflection.ReflectionBeanWriter;
+import com.softwarearchetypes.rules.core.selection.CandidateRule;
 import com.softwarearchetypes.rules.discounting.client.ClientContext;
-import com.softwarearchetypes.rules.discounting.config.DiscountRepository;
-import com.softwarearchetypes.rules.discounting.config.reflection.Config;
-import com.softwarearchetypes.rules.discounting.config.reflection.Discount;
-import com.softwarearchetypes.rules.discounting.config.reflection.DiscountParam;
-import com.softwarearchetypes.rules.discounting.config.reflection.ReflectionBeanWriter;
+import com.softwarearchetypes.rules.discounting.config.codecs.Codecs;
+import com.softwarearchetypes.rules.discounting.offer.OfferItem;
 
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 public class ConfigImporter  {
 
-    private final DiscountRepository discountRepository;
-    private final ReflectionBeanWriter beanWriter = new ReflectionBeanWriter();
+    private final RuleDefinitionRepository ruleRepository;
+    private final ReflectionBeanWriter beanWriter = new ReflectionBeanWriter(Codecs.QUANTITY);
 
-    public ConfigImporter(DiscountRepository discountRepository) {
-        this.discountRepository = discountRepository;
+    public ConfigImporter(RuleDefinitionRepository ruleRepository) {
+        this.ruleRepository = ruleRepository;
     }
 
-    public void importConfig(Map<OfferItemModifier, Predicate<ClientContext>> configMap) {
-        for (Map.Entry<OfferItemModifier, Predicate<ClientContext>> entry : configMap.entrySet()) {
-            OfferItemModifier modifier = entry.getKey();
+    public void importConfig(List<CandidateRule<ClientContext, OfferItem>> rules) {
+        for (CandidateRule<ClientContext, OfferItem> rule : rules) {
+            Modifier<OfferItem> modifier = rule.modifier();
 
             Map<String, String> params = new HashMap<>();
-            beanWriter.writeBean(Config.MODIFIER_PREFIX, modifier, params);
-
+            beanWriter.writeBean(ConfigKeys.MODIFIER_PREFIX, modifier, params);
 
             String name = humanReadableName(modifier);
 
-            UUID discountId = discountRepository.insert(new Discount(null, name));
+            UUID ruleId = ruleRepository.insert(new RuleDefinition(null, name));
             for (Map.Entry<String, String> p : params.entrySet()) {
-                discountRepository.insertParam(new DiscountParam(discountId, p.getKey(), p.getValue()));
+                ruleRepository.insertParam(new RuleParam(ruleId, p.getKey(), p.getValue()));
             }
 
             params.clear();
-            Predicate<ClientContext> clientPredicate = entry.getValue();
+            Predicate<ClientContext> appliesTo = rule.appliesTo();
 
-            beanWriter.writeBean(Config.CLIENT_PREDICATE_PREFIX, clientPredicate, params);
+            beanWriter.writeBean(ConfigKeys.SELECTION_PREDICATE_PREFIX, appliesTo, params);
             for (Map.Entry<String, String> p : params.entrySet()) {
-                discountRepository.insertParam(new DiscountParam(discountId, p.getKey(), p.getValue()));
+                ruleRepository.insertParam(new RuleParam(ruleId, p.getKey(), p.getValue()));
             }
         }
     }
 
-    private String humanReadableName(OfferItemModifier modifier) {
+    private String humanReadableName(Modifier<OfferItem> modifier) {
         try {
             Method m = modifier.getClass().getMethod("getName");
             Object result = m.invoke(modifier);

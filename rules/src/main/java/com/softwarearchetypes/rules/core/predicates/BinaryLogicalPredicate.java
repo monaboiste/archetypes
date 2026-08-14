@@ -1,4 +1,4 @@
-package com.softwarearchetypes.rules.predicates;
+package com.softwarearchetypes.rules.core.predicates;
 
 public abstract class BinaryLogicalPredicate<T> implements LogicalPredicate<T> {
     private final LogicalPredicate<T> left;
@@ -10,6 +10,12 @@ public abstract class BinaryLogicalPredicate<T> implements LogicalPredicate<T> {
         this.right = right;
     }
 
-    public LogicalPredicate<T> left()  { return left; }
-    public LogicalPredicate<T> right() { return right; }
+    public LogicalPredicate<T> left() {
+        return left;
+    }
+
+    public LogicalPredicate<T> right() {
+        return right;
+    }
 }
+    

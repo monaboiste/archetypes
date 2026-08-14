@@ -1,17 +1,24 @@
-package com.softwarearchetypes.rules.discounting.config.reflection;
+package com.softwarearchetypes.rules.core.config.reflection;
 
-import com.softwarearchetypes.quantity.money.Money;
-import com.softwarearchetypes.quantity.money.Percentage;
-import com.softwarearchetypes.rules.predicates.AndPredicate;
-import com.softwarearchetypes.rules.predicates.LogicalPredicate;
-import com.softwarearchetypes.rules.predicates.NotPredicate;
-import com.softwarearchetypes.rules.predicates.OrPredicate;
+import com.softwarearchetypes.rules.core.predicates.AndPredicate;
+import com.softwarearchetypes.rules.core.predicates.LogicalPredicate;
+import com.softwarearchetypes.rules.core.predicates.NotPredicate;
+import com.softwarearchetypes.rules.core.predicates.OrPredicate;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 
+// The inverse direction: turns a configured rule into flat parameters. Value objects go through the
+// registered ValueCodecs, so this class - like the reader - names no domain type at all.
 public class ReflectionBeanWriter {
+
+    private final List<ValueCodec> codecs;
+
+    public ReflectionBeanWriter(List<ValueCodec> codecs) {
+        this.codecs = List.copyOf(codecs);
+    }
 
     public void writeBean(String prefix, Object bean, Map<String, String> out) {
         if (bean == null) {
@@ -21,15 +28,9 @@ public class ReflectionBeanWriter {
 
         out.put(prefix + ".class", clazz.getName());
 
-        // special Value Objects
-
-        if (bean instanceof Money money) {
-            writeMoney(prefix, money, out);
-            return;
-        }
-
-        if (bean instanceof Percentage percentage) {
-            writePercentage(prefix, percentage, out);
+        ValueCodec codec = codecFor(clazz);
+        if (codec != null) {
+            codec.write(prefix, bean, out);
             return;
         }
 
@@ -46,17 +47,16 @@ public class ReflectionBeanWriter {
     }
 
     /**
-     *
-     * clientPred.root = n1
-     * clientPred.n1.type  = AND / OR / NOT / LEAF
-     * clientPred.n1.left  = n2
-     * clientPred.n1.right = n3
+     * selectionPred.root = n1
+     * selectionPred.n1.type  = AND / OR / NOT / LEAF
+     * selectionPred.n1.left  = n2
+     * selectionPred.n1.right = n3
      * ...
-     *
+     * <p>
      * for LEAF:
-     * clientPred.nX.type  = LEAF
-     * clientPred.nX.class = ...
-     * clientPred.nX.arg0  = ...
+     * selectionPred.nX.type  = LEAF
+     * selectionPred.nX.class = ...
+     * selectionPred.nX.arg0  = ...
      */
     public void writeLogicalPredicate(String basePrefix,
                                       LogicalPredicate<?> root,
@@ -69,8 +69,6 @@ public class ReflectionBeanWriter {
         out.put(basePrefix + ".root", rootId);
         writeLogicalNode(basePrefix, rootId, root, out, gen);
     }
-
-    // --- LOGIC TREE SERIALIZATION -----------------------------------------
 
     private void writeLogicalNode(String basePrefix,
                                   String nodeId,
@@ -88,9 +86,8 @@ public class ReflectionBeanWriter {
                 out.put(nodePrefix + ".left", leftId);
                 out.put(nodePrefix + ".right", rightId);
 
-                writeLogicalNode(basePrefix, leftId, (LogicalPredicate<?>) and.left(), out, gen);
-                writeLogicalNode(basePrefix, rightId, (LogicalPredicate<?>) and.right(), out, gen);
-
+                writeLogicalNode(basePrefix, leftId, and.left(), out, gen);
+                writeLogicalNode(basePrefix, rightId, and.right(), out, gen);
             }
             case OrPredicate<?> or -> {
                 out.put(nodePrefix + ".type", "OR");
@@ -100,9 +97,8 @@ public class ReflectionBeanWriter {
                 out.put(nodePrefix + ".left", leftId);
                 out.put(nodePrefix + ".right", rightId);
 
-                writeLogicalNode(basePrefix, leftId, (LogicalPredicate<?>) or.left(), out, gen);
-                writeLogicalNode(basePrefix, rightId, (LogicalPredicate<?>) or.right(), out, gen);
-
+                writeLogicalNode(basePrefix, leftId, or.left(), out, gen);
+                writeLogicalNode(basePrefix, rightId, or.right(), out, gen);
             }
             case NotPredicate<?> not -> {
                 out.put(nodePrefix + ".type", "NOT");
@@ -111,9 +107,8 @@ public class ReflectionBeanWriter {
                 out.put(nodePrefix + ".child", childId);
                 writeLogicalNode(basePrefix, childId, not.child(), out, gen);
             }
-
             case null, default -> {
-                // LEAF – ordinary data leaf
+                // LEAF - an ordinary data leaf
                 out.put(nodePrefix + ".type", "LEAF");
 
                 Class<?> leafClass = predicate.getClass();
@@ -130,16 +125,10 @@ public class ReflectionBeanWriter {
 
     private static final class NodeIdGenerator {
         private int counter = 1;
-        String nextId() { return "n" + counter++; }
-    }
 
-    private void writeMoney(String prefix, Money money, Map<String, String> out) {
-        out.put(prefix + ".money.amount",   money.value().toString());
-        out.put(prefix + ".money.currency", money.currency());
-    }
-
-    private void writePercentage(String prefix, Percentage percentage, Map<String, String> out) {
-        out.put(prefix + ".percentage.value", percentage.value().toString());
+        String nextId() {
+            return "n" + counter++;
+        }
     }
 
     private void writeRecordArgs(String prefix, Object bean, Class<?> clazz, Map<String, String> out) {
@@ -156,13 +145,12 @@ public class ReflectionBeanWriter {
     }
 
     private void writeConstructorArgs(String prefix, Object bean, Class<?> clazz, Map<String, String> out) {
-        // Simplification: take first constructor
-        // values from getters
+        // Simplification: take the first constructor and read its parameters back from getters
         Constructor<?> ctor = clazz.getDeclaredConstructors()[0];
         var params = ctor.getParameters();
 
         for (java.lang.reflect.Parameter param : params) {
-            String paramName = param.getName(); // uwaga: potrzeba przełącznika -parameters dla kompilatora aby w bytecode były zachowana nazwy parametrów
+            String paramName = param.getName(); // requires the -parameters compiler flag
             Method accessor = findAccessor(clazz, paramName);
             try {
                 Object value = accessor.invoke(bean);
@@ -174,13 +162,12 @@ public class ReflectionBeanWriter {
     }
 
     private Method findAccessor(Class<?> clazz, String paramName) {
-        // try "getXxx"
         String capitalized = Character.toUpperCase(paramName.charAt(0)) + paramName.substring(1);
         String getterName = "get" + capitalized;
         try {
             return clazz.getMethod(getterName);
         } catch (NoSuchMethodException e) {
-            // try filed name ("amount()", "value()")
+            // try the record-style accessor ("amount()", "value()")
             try {
                 return clazz.getMethod(paramName);
             } catch (NoSuchMethodException e2) {
@@ -203,9 +190,18 @@ public class ReflectionBeanWriter {
                 out.put(prefix, value.toString());
             }
         } else {
-            // value object or nested - recursion
+            // value object or nested bean - recursion
             writeBean(prefix, value, out);
         }
+    }
+
+    private ValueCodec codecFor(Class<?> type) {
+        for (ValueCodec codec : codecs) {
+            if (codec.supports(type)) {
+                return codec;
+            }
+        }
+        return null;
     }
 
     private boolean isSimpleType(Class<?> type) {
@@ -215,3 +211,4 @@ public class ReflectionBeanWriter {
                 || Enum.class.isAssignableFrom(type);
     }
 }
+    

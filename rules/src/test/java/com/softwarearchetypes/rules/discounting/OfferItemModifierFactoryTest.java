@@ -4,13 +4,14 @@ package com.softwarearchetypes.rules.discounting;
 import com.softwarearchetypes.quantity.Quantity;
 import com.softwarearchetypes.quantity.Unit;
 import com.softwarearchetypes.quantity.money.Money;
+import com.softwarearchetypes.rules.core.Modifier;
+import com.softwarearchetypes.rules.core.config.RuleDefinitionRepository;
+import com.softwarearchetypes.rules.core.config.reflection.ReflectionRuleConfigProvider;
 import com.softwarearchetypes.rules.discounting.client.ClientContext;
 import com.softwarearchetypes.rules.discounting.client.ClientContextRepository;
 import com.softwarearchetypes.rules.discounting.client.ClientStatus;
-import com.softwarearchetypes.rules.discounting.config.DiscountRepository;
 import com.softwarearchetypes.rules.discounting.config.SampleStaticConfig;
-import com.softwarearchetypes.rules.discounting.config.reflection.ReflectionBeanReader;
-import com.softwarearchetypes.rules.discounting.config.reflection.ReflectionDynamicConfig;
+import com.softwarearchetypes.rules.discounting.config.codecs.Codecs;
 import com.softwarearchetypes.rules.discounting.offer.OfferItem;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ public class OfferItemModifierFactoryTest {
         }
     };
 
-    private DiscountRepository discountRepository = new FakeDiscountRepository();
+    private RuleDefinitionRepository ruleRepository = new FakeRuleDefinitionRepository();
 
     @Test
     public void testVipDiscount() {
@@ -40,7 +41,7 @@ public class OfferItemModifierFactoryTest {
     public void testConfig(){
         OfferItemModifierFactory factory = new OfferItemModifierFactory(clientContextRepository, new SampleStaticConfig());
 
-        OfferItemModifier modifier = factory.createDiscountModifier3(UUID.randomUUID());
+        Modifier<OfferItem> modifier = factory.createDiscountModifier3(UUID.randomUUID());
         var modified = modifier.modify(anyItemPriced(100));
 
         assertEquals(anyItemPriced(80).getFinalPrice(), modified.getFinalPrice());
@@ -50,13 +51,14 @@ public class OfferItemModifierFactoryTest {
     @Test
     public void testReflectionDynamicConfig(){
         SampleStaticConfig config = new SampleStaticConfig();
-        var configMap = config.loadConfig();
+        var rules = config.load();
         //save to DB
-        ConfigImporter importer = new ConfigImporter(discountRepository);
-        importer.importConfig(configMap);
+        ConfigImporter importer = new ConfigImporter(ruleRepository);
+        importer.importConfig(rules);
 
-        OfferItemModifierFactory factory = new OfferItemModifierFactory(clientContextRepository, new ReflectionDynamicConfig(discountRepository));
-        OfferItemModifier modifier = factory.createDiscountModifier3(UUID.randomUUID());
+        OfferItemModifierFactory factory = new OfferItemModifierFactory(clientContextRepository,
+                new ReflectionRuleConfigProvider<>(ruleRepository, Codecs.QUANTITY));
+        Modifier<OfferItem> modifier = factory.createDiscountModifier3(UUID.randomUUID());
 
         var modified = modifier.modify(anyItemPriced(100));
         assertEquals(anyItemPriced(80).getFinalPrice(), modified.getFinalPrice());

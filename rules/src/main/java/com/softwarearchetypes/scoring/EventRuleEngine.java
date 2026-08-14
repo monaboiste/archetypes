@@ -7,8 +7,8 @@ import com.softwarearchetypes.scoring.ast.EventRule;
 import com.softwarearchetypes.scoring.ast.Expression;
 import com.softwarearchetypes.scoring.ast.ExpressionVisitor;
 import com.softwarearchetypes.scoring.context.EventWindowContext;
-import com.softwarearchetypes.scoring.events.CustomerEvent;
 import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.events.CustomerEvent;
 
 import java.util.List;
 

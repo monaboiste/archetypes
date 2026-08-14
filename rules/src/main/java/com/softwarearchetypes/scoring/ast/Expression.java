@@ -58,8 +58,8 @@ public interface Expression {
 
     record Labeled(String label, Expression inner) implements Expression {
         @Override
-            public <R> R accept(ExpressionVisitor<R> visitor) {
-                return visitor.visit(this);
-            }
+        public <R> R accept(ExpressionVisitor<R> visitor) {
+            return visitor.visit(this);
         }
+    }
 }

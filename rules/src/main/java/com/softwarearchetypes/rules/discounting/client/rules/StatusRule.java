@@ -1,10 +1,9 @@
 package com.softwarearchetypes.rules.discounting.client.rules;
 
+import com.softwarearchetypes.rules.core.predicates.RichLogicalPredicate;
 import com.softwarearchetypes.rules.discounting.client.ClientContext;
 import com.softwarearchetypes.rules.discounting.client.ClientStatus;
-import com.softwarearchetypes.rules.predicates.RichLogicalPredicate;
 
-import java.util.function.Predicate;
 
 public class StatusRule implements RichLogicalPredicate<ClientContext> {
     private final ClientStatus status;

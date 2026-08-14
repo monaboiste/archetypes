@@ -42,11 +42,11 @@ public class FuzzyAlgebra implements Algebra<FuzzyValue> {
         }
 
         return switch (op) {
-            case GT  -> fuzzyGreater(v, value, margin);
+            case GT -> fuzzyGreater(v, value, margin);
             case GTE -> fuzzyGreater(v, value - 0.1 * margin, margin);
-            case LT  -> fuzzyLess(v, value, margin);
+            case LT -> fuzzyLess(v, value, margin);
             case LTE -> fuzzyLess(v, value + 0.1 * margin, margin);
-            case EQ  -> fuzzyEqual(v, value, margin);
+            case EQ -> fuzzyEqual(v, value, margin);
         };
     }
 
