@@ -3,7 +3,7 @@ package com.softwarearchetypes.scoring.algebra.score;
 import com.softwarearchetypes.scoring.algebra.Algebra;
 import com.softwarearchetypes.scoring.ast.CmpOp;
 import com.softwarearchetypes.scoring.ast.Metric;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.context.MetricSource;
 
 import java.util.List;
 
@@ -25,8 +25,8 @@ public class ScoreAlgebra implements Algebra<Score> {
     }
 
     @Override
-    public Score metricCmp(WindowContext ctx, Metric metric, CmpOp op, double value) {
-        double mv = ctx.getMetric(metric);
+    public Score metricCmp(MetricSource source, Metric metric, CmpOp op, double value) {
+        double mv = source.metric(metric);
         boolean ok = op.compare(mv, value);
         return new Score(ok ? 1 : 0); // warunek → 0/1
     }

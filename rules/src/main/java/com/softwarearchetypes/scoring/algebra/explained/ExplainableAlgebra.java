@@ -3,7 +3,7 @@ package com.softwarearchetypes.scoring.algebra.explained;
 import com.softwarearchetypes.scoring.algebra.Algebra;
 import com.softwarearchetypes.scoring.ast.CmpOp;
 import com.softwarearchetypes.scoring.ast.Metric;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.context.MetricSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +29,8 @@ public class ExplainableAlgebra implements Algebra<ExplainedScore> {
     }
 
     @Override
-    public ExplainedScore metricCmp(WindowContext ctx, Metric metric, CmpOp op, double value) {
-        double mv = ctx.getMetric(metric);
+    public ExplainedScore metricCmp(MetricSource source, Metric metric, CmpOp op, double value) {
+        double mv = source.metric(metric);
         boolean ok = op.compare(mv, value);
         return new ExplainedScore(ok ? 1 : 0, List.of());
     }

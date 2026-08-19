@@ -7,7 +7,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-public class WindowContext {
+// Implements the core MetricSource port, so an algebra sees only "give me this metric" and never
+// this customer-shaped window. ponytail: customerId and the CustomerEvent list still live here -
+// generalizing them is L05.3, not this task.
+public class WindowContext implements MetricSource {
 
     private final String customerId;
     private final Instant from;
@@ -47,7 +50,8 @@ public class WindowContext {
         return metrics;
     }
 
-    public Double getMetric(Metric metric) {
+    @Override
+    public double metric(Metric metric) {
         return metrics.getOrDefault(metric, 0.0);
     }
 }

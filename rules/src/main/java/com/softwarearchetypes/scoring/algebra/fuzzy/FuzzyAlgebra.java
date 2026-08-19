@@ -3,7 +3,7 @@ package com.softwarearchetypes.scoring.algebra.fuzzy;
 import com.softwarearchetypes.scoring.algebra.Algebra;
 import com.softwarearchetypes.scoring.ast.CmpOp;
 import com.softwarearchetypes.scoring.ast.Metric;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.context.MetricSource;
 
 import java.util.List;
 import java.util.Map;
@@ -32,8 +32,8 @@ public class FuzzyAlgebra implements Algebra<FuzzyValue> {
     }
 
     @Override
-    public FuzzyValue metricCmp(WindowContext ctx, Metric metric, CmpOp op, double value) {
-        double v = ctx.getMetric(metric);
+    public FuzzyValue metricCmp(MetricSource source, Metric metric, CmpOp op, double value) {
+        double v = source.metric(metric);
         double margin = margins.getOrDefault(metric, 0.0);
 
         if (margin <= 0.0) {

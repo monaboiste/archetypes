@@ -2,18 +2,22 @@ package com.softwarearchetypes.scoring.algebra;
 
 import com.softwarearchetypes.scoring.ast.Expression;
 import com.softwarearchetypes.scoring.ast.ExpressionVisitor;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.context.MetricSource;
 
 import java.util.ArrayList;
 import java.util.List;
 
+// PATTERN: Visitor + Interpreter. This class owns the traversal and the double dispatch; the
+// Algebra owns the semantics. The same expression tree therefore yields points, a fuzzy degree or an
+// explanation, and - since the only data it holds is a MetricSource - it knows nothing about the
+// domain the metrics come from.
 public class AlgebraicVisitor<R> implements ExpressionVisitor<R> {
 
-    private final WindowContext ctx;
+    private final MetricSource metrics;
     private final Algebra<R> algebra;
 
-    public AlgebraicVisitor(WindowContext ctx, Algebra<R> algebra) {
-        this.ctx = ctx;
+    public AlgebraicVisitor(MetricSource metrics, Algebra<R> algebra) {
+        this.metrics = metrics;
         this.algebra = algebra;
     }
 
@@ -39,7 +43,7 @@ public class AlgebraicVisitor<R> implements ExpressionVisitor<R> {
 
     @Override
     public R visit(Expression.MetricCmp expr) {
-        return algebra.metricCmp(ctx, expr.metric(), expr.op(), expr.value());
+        return algebra.metricCmp(metrics, expr.metric(), expr.op(), expr.value());
     }
 
     @Override
