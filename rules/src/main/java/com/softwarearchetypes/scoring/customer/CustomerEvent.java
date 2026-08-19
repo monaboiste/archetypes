@@ -1,4 +1,4 @@
-package com.softwarearchetypes.scoring.events;
+package com.softwarearchetypes.scoring.customer;
 
 import java.time.Instant;
 

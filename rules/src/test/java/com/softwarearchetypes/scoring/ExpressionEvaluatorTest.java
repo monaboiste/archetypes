@@ -8,10 +8,12 @@ import com.softwarearchetypes.scoring.algebra.score.simplified.ScoringAlgebra;
 import com.softwarearchetypes.scoring.algebra.score.simplified.SimpleScoringAlgebra;
 import com.softwarearchetypes.scoring.ast.CmpOp;
 import com.softwarearchetypes.scoring.ast.Expression;
+import com.softwarearchetypes.scoring.ast.Metric;
 import com.softwarearchetypes.scoring.customer.CustomerMetrics;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.customer.CustomerWindow;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -22,7 +24,7 @@ public class ExpressionEvaluatorTest {
 
     @Test
     public void simplified_ScoringAlgebraTimeWindowTest(){
-        WindowContext ctx = new WindowContext(null, null, null, null,
+        CustomerWindow ctx = window(
                 Map.of(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, 20000.0,
                         CustomerMetrics.QUARTERLY_COMPLAINT_COUNT, 5.0));
         Expression rule = yearlyAndQuarterlyRule();
@@ -35,7 +37,7 @@ public class ExpressionEvaluatorTest {
 
     @Test
     public void scoringAlgebraTimeWindowTest(){
-        WindowContext ctx = new WindowContext(null, null, null, null,
+        CustomerWindow ctx = window(
                 Map.of(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, 20000.0,
                         CustomerMetrics.QUARTERLY_COMPLAINT_COUNT, 5.0));
         Expression rule = yearlyAndQuarterlyRule();
@@ -44,6 +46,10 @@ public class ExpressionEvaluatorTest {
         Score score = rule.accept(visitor);
 
         assertEquals(new Score(20), score);
+    }
+
+    private CustomerWindow window(Map<Metric, Double> metrics) {
+        return new CustomerWindow("c-1", Instant.EPOCH, Instant.EPOCH, List.of(), metrics);
     }
 
     private Expression yearlyAndQuarterlyRule() {

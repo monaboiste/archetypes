@@ -15,8 +15,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 // The point of L05.1: this is a scoring core, not a customer-scoring core. The same AST, visitor and
-// algebra score a supplier, with metrics the core has never heard of, no WindowContext and no
-// CustomerEvent - the MetricSource is a one-line lambda.
+// algebra score a supplier, with metrics the core has never heard of, no window class and no domain
+// event - the MetricSource is a one-line lambda.
 public class MetricGeneralizationTest {
 
     private static final Metric ON_TIME_DELIVERY_RATE = Metric.of("on-time-delivery-rate");

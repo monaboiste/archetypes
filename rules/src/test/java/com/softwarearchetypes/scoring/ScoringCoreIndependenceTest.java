@@ -20,10 +20,12 @@ public class ScoringCoreIndependenceTest {
     private static final List<Path> CORE = List.of(
             Path.of("src/main/java/com/softwarearchetypes/scoring/ast"),
             Path.of("src/main/java/com/softwarearchetypes/scoring/algebra"),
-            Path.of("src/main/java/com/softwarearchetypes/scoring/context"));
+            Path.of("src/main/java/com/softwarearchetypes/scoring/context"),
+            Path.of("src/main/java/com/softwarearchetypes/scoring/EventRuleEngine.java"));
 
     private static final List<String> FORBIDDEN = List.of(
             "com.softwarearchetypes.scoring.customer",
+            "Customer",
             "PURCHASE_AMOUNT",
             "COMPLAINT");
 
