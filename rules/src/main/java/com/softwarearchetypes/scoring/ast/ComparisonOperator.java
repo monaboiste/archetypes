@@ -1,6 +1,6 @@
 package com.softwarearchetypes.scoring.ast;
 
-public enum CmpOp {
+public enum ComparisonOperator {
     GT, GTE, LT, LTE, EQ;
 
     public boolean compare(double left, double right) {

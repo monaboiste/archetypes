@@ -4,7 +4,7 @@ import com.softwarearchetypes.scoring.algebra.AlgebraicVisitor;
 import com.softwarearchetypes.scoring.algebra.bool.BooleanAlgebra;
 import com.softwarearchetypes.scoring.algebra.score.Score;
 import com.softwarearchetypes.scoring.algebra.score.ScoreAlgebra;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.Expression;
 import com.softwarearchetypes.scoring.ast.Metric;
 import com.softwarearchetypes.scoring.context.MetricSource;
@@ -55,16 +55,16 @@ public class BooleanAlgebraTest {
 
     @Test
     public void constantIsFalseOnlyWhenZero() {
-        assertTrue(eval(new Expression.ConstScore(50)));
-        assertTrue(eval(new Expression.ConstScore(-30)));
-        assertFalse(eval(new Expression.ConstScore(0)));
+        assertTrue(eval(new Expression.ConstantScore(50)));
+        assertTrue(eval(new Expression.ConstantScore(-30)));
+        assertFalse(eval(new Expression.ConstantScore(0)));
     }
 
     // Why the task exists: a scoring algebra used as a filter reads a negative subtree as "condition
     // not met", so Not(-30) came out true. Boolean logic gets it right.
     @Test
     public void negativePointsNoLongerReadAsFalse() {
-        Expression filter = new Expression.Not(new Expression.ConstScore(-30));
+        Expression filter = new Expression.Not(new Expression.ConstantScore(-30));
 
         Score asScore = filter.accept(new AlgebraicVisitor<>(SOURCE, new ScoreAlgebra()));
 
@@ -74,7 +74,7 @@ public class BooleanAlgebraTest {
     }
 
     private static Expression above(double threshold) {
-        return new Expression.MetricCmp(AMOUNT, CmpOp.GT, threshold);
+        return new Expression.MetricComparison(AMOUNT, ComparisonOperator.GT, threshold);
     }
 
     private static boolean eval(Expression expression) {

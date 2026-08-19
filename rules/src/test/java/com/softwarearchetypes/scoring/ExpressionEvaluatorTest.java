@@ -6,7 +6,7 @@ import com.softwarearchetypes.scoring.algebra.score.ScoreAlgebra;
 import com.softwarearchetypes.scoring.algebra.score.simplified.ExpressionEvaluator;
 import com.softwarearchetypes.scoring.algebra.score.simplified.ScoringAlgebra;
 import com.softwarearchetypes.scoring.algebra.score.simplified.SimpleScoringAlgebra;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.Expression;
 import com.softwarearchetypes.scoring.ast.Metric;
 import com.softwarearchetypes.scoring.customer.CustomerMetrics;
@@ -24,24 +24,24 @@ public class ExpressionEvaluatorTest {
 
     @Test
     public void simplified_ScoringAlgebraTimeWindowTest(){
-        CustomerWindow ctx = window(
+        CustomerWindow customerWindow = window(
                 Map.of(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, 20000.0,
                         CustomerMetrics.QUARTERLY_COMPLAINT_COUNT, 5.0));
         Expression rule = yearlyAndQuarterlyRule();
-        ScoringAlgebra alg = new SimpleScoringAlgebra();
+        ScoringAlgebra algebra = new SimpleScoringAlgebra();
 
-        Score score = ExpressionEvaluator.eval(rule, ctx, alg);
+        Score score = ExpressionEvaluator.eval(rule, customerWindow, algebra);
 
         assertEquals(new Score(20), score);
     }
 
     @Test
     public void scoringAlgebraTimeWindowTest(){
-        CustomerWindow ctx = window(
+        CustomerWindow customerWindow = window(
                 Map.of(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, 20000.0,
                         CustomerMetrics.QUARTERLY_COMPLAINT_COUNT, 5.0));
         Expression rule = yearlyAndQuarterlyRule();
-        AlgebraicVisitor<Score> visitor = new AlgebraicVisitor<>(ctx, new ScoreAlgebra());
+        AlgebraicVisitor<Score> visitor = new AlgebraicVisitor<>(customerWindow, new ScoreAlgebra());
 
         Score score = rule.accept(visitor);
 
@@ -54,15 +54,15 @@ public class ExpressionEvaluatorTest {
 
     private Expression yearlyAndQuarterlyRule() {
         Expression highTurnoverRule = new Expression.IfThenElse(
-                new Expression.MetricCmp(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, CmpOp.GT, 10_000.0),
-                new Expression.ConstScore(50),
-                new Expression.ConstScore(0)
+                new Expression.MetricComparison(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, ComparisonOperator.GT, 10_000.0),
+                new Expression.ConstantScore(50),
+                new Expression.ConstantScore(0)
         );
 
         Expression tooManyComplaintsRule = new Expression.IfThenElse(
-                new Expression.MetricCmp(CustomerMetrics.QUARTERLY_COMPLAINT_COUNT, CmpOp.GT, 3.0),
-                new Expression.ConstScore(-30),
-                new Expression.ConstScore(0)
+                new Expression.MetricComparison(CustomerMetrics.QUARTERLY_COMPLAINT_COUNT, ComparisonOperator.GT, 3.0),
+                new Expression.ConstantScore(-30),
+                new Expression.ConstantScore(0)
         );
 
         return new Expression.Sum(List.of(

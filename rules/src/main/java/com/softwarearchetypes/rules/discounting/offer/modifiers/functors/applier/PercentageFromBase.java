@@ -15,8 +15,8 @@ public class PercentageFromBase implements Function<OfferItem, Money> {
 
     @Override
     public Money apply(OfferItem offerItem) {
-        Money mod = offerItem.getBasePrice().multiply(percentage);
-        return offerItem.getFinalPrice().subtract(mod);
+        Money discountAmount = offerItem.getBasePrice().multiply(percentage);
+        return offerItem.getFinalPrice().subtract(discountAmount);
     }
 
     public Percentage getPercentage() {

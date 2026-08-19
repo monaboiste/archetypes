@@ -1,7 +1,7 @@
 package com.softwarearchetypes.scoring.algebra.bool;
 
 import com.softwarearchetypes.scoring.algebra.Algebra;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.Metric;
 import com.softwarearchetypes.scoring.context.MetricSource;
 
@@ -30,7 +30,7 @@ public class BooleanAlgebra implements Algebra<Boolean> {
     }
 
     @Override
-    public Boolean metricCmp(MetricSource source, Metric metric, CmpOp op, double value) {
+    public Boolean metricCmp(MetricSource source, Metric metric, ComparisonOperator op, double value) {
         return op.compare(source.metric(metric), value); // no 0/1 detour, the comparison IS the answer
     }
 
@@ -47,7 +47,7 @@ public class BooleanAlgebra implements Algebra<Boolean> {
     }
 
     @Override
-    public Boolean ifThenElse(Boolean cond, Boolean thenV, Boolean elseV) {
-        return cond ? thenV : elseV;
+    public Boolean ifThenElse(Boolean cond, Boolean thenValue, Boolean elseValue) {
+        return cond ? thenValue : elseValue;
     }
 }

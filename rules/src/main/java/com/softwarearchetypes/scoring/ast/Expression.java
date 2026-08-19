@@ -28,14 +28,14 @@ public interface Expression {
         }
     }
 
-    record MetricCmp(Metric metric, CmpOp op, double value) implements Expression {
+    record MetricComparison(Metric metric, ComparisonOperator op, double value) implements Expression {
         @Override
         public <R> R accept(ExpressionVisitor<R> vistor) {
             return vistor.visit(this);
         }
     }
 
-    record ConstScore(int value) implements Expression {
+    record ConstantScore(int value) implements Expression {
         @Override
         public <R> R accept(ExpressionVisitor<R> vistor) {
             return vistor.visit(this);

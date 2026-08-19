@@ -3,7 +3,7 @@ package com.softwarearchetypes.scoring;
 import com.softwarearchetypes.scoring.algebra.AlgebraicVisitor;
 import com.softwarearchetypes.scoring.algebra.score.Score;
 import com.softwarearchetypes.scoring.algebra.score.ScoreAlgebra;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.Expression;
 import com.softwarearchetypes.scoring.ast.Metric;
 import com.softwarearchetypes.scoring.context.MetricSource;
@@ -54,12 +54,12 @@ public class MetricGeneralizationTest {
     private Expression supplierRule() {
         return new Expression.Sum(List.of(
                 new Expression.IfThenElse(
-                        new Expression.MetricCmp(ON_TIME_DELIVERY_RATE, CmpOp.GT, 0.95),
-                        new Expression.ConstScore(50),
-                        new Expression.ConstScore(0)),
+                        new Expression.MetricComparison(ON_TIME_DELIVERY_RATE, ComparisonOperator.GT, 0.95),
+                        new Expression.ConstantScore(50),
+                        new Expression.ConstantScore(0)),
                 new Expression.IfThenElse(
-                        new Expression.MetricCmp(OPEN_DISPUTES, CmpOp.GT, 3.0),
-                        new Expression.ConstScore(-30),
-                        new Expression.ConstScore(0))));
+                        new Expression.MetricComparison(OPEN_DISPUTES, ComparisonOperator.GT, 3.0),
+                        new Expression.ConstantScore(-30),
+                        new Expression.ConstantScore(0))));
     }
 }

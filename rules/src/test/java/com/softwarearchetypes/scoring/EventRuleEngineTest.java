@@ -8,7 +8,7 @@ import com.softwarearchetypes.scoring.algebra.explained.ExplainedScoreMonoid;
 import com.softwarearchetypes.scoring.algebra.score.Score;
 import com.softwarearchetypes.scoring.algebra.score.ScoreAlgebra;
 import com.softwarearchetypes.scoring.algebra.score.ScoreMonoid;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.EventRule;
 import com.softwarearchetypes.scoring.ast.Expression;
 import com.softwarearchetypes.scoring.ast.Metric;
@@ -42,8 +42,8 @@ public class EventRuleEngineTest {
     @Test
     public void aFilterThatDoesNotHoldScoresNothing() {
         EventRule neverApplies = new EventRule(
-                new Expression.MetricCmp(CustomerEventMetrics.AMOUNT, CmpOp.GT, 100_000.0),
-                new Expression.ConstScore(3));
+                new Expression.MetricComparison(CustomerEventMetrics.AMOUNT, ComparisonOperator.GT, 100_000.0),
+                new Expression.ConstantScore(3));
 
         assertEquals(Score.ZERO, engine.evaluateRules(List.of(neverApplies), window(1500, 2000)));
     }
@@ -51,8 +51,8 @@ public class EventRuleEngineTest {
     @Test
     public void onlyTheMatchingRuleContributes() {
         EventRule smallPurchases = new EventRule(
-                new Expression.MetricCmp(CustomerEventMetrics.AMOUNT, CmpOp.LT, 100.0),
-                new Expression.ConstScore(50));
+                new Expression.MetricComparison(CustomerEventMetrics.AMOUNT, ComparisonOperator.LT, 100.0),
+                new Expression.ConstantScore(50));
 
         Score score = engine.evaluateRules(List.of(pointsPerLargePurchase(), smallPurchases), window(1500));
 
@@ -63,9 +63,9 @@ public class EventRuleEngineTest {
     public void anEventMetricAndAWindowMetricCombineInOneFilter() {
         EventRule loyalCustomerBonus = new EventRule(
                 new Expression.And(
-                        new Expression.MetricCmp(CustomerEventMetrics.AMOUNT, CmpOp.GT, 1000.0),
-                        new Expression.MetricCmp(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, CmpOp.GT, 10_000.0)),
-                new Expression.ConstScore(3));
+                        new Expression.MetricComparison(CustomerEventMetrics.AMOUNT, ComparisonOperator.GT, 1000.0),
+                        new Expression.MetricComparison(CustomerMetrics.YEARLY_PURCHASE_AMOUNT, ComparisonOperator.GT, 10_000.0)),
+                new Expression.ConstantScore(3));
 
         assertEquals(new Score(3), engine.evaluateRules(List.of(loyalCustomerBonus), window(1500)));
         assertEquals(Score.ZERO, engine.evaluateRules(List.of(loyalCustomerBonus), poorWindow(1500)));
@@ -77,9 +77,9 @@ public class EventRuleEngineTest {
     public void filtersOnTheEventType() {
         EventRule largePurchases = new EventRule(
                 new Expression.And(
-                        new Expression.MetricCmp(CustomerEventMetrics.typeIs("PURCHASE"), CmpOp.EQ, 1.0),
-                        new Expression.MetricCmp(CustomerEventMetrics.AMOUNT, CmpOp.GT, 1000.0)),
-                new Expression.ConstScore(3));
+                        new Expression.MetricComparison(CustomerEventMetrics.typeIs("PURCHASE"), ComparisonOperator.EQ, 1.0),
+                        new Expression.MetricComparison(CustomerEventMetrics.AMOUNT, ComparisonOperator.GT, 1000.0)),
+                new Expression.ConstantScore(3));
 
         CustomerWindow window = mixedWindow(
                 new CustomerEvent("PURCHASE", Instant.EPOCH, 1500),
@@ -96,8 +96,8 @@ public class EventRuleEngineTest {
         EventRuleEngine<ExplainedScore> explaining = new EventRuleEngine<>(
                 new BooleanAlgebra(), new ExplainableAlgebra(), new ExplainedScoreMonoid());
         EventRule labelled = new EventRule(
-                new Expression.MetricCmp(CustomerEventMetrics.AMOUNT, CmpOp.GT, 1000.0),
-                new Expression.Labeled("large purchase", new Expression.ConstScore(3)));
+                new Expression.MetricComparison(CustomerEventMetrics.AMOUNT, ComparisonOperator.GT, 1000.0),
+                new Expression.Labeled("large purchase", new Expression.ConstantScore(3)));
 
         ExplainedScore explained = explaining.evaluateRules(List.of(labelled), window(1500, 500, 2000));
 
@@ -108,8 +108,8 @@ public class EventRuleEngineTest {
 
     private static EventRule pointsPerLargePurchase() {
         return new EventRule(
-                new Expression.MetricCmp(CustomerEventMetrics.AMOUNT, CmpOp.GT, 1000.0),
-                new Expression.ConstScore(3));
+                new Expression.MetricComparison(CustomerEventMetrics.AMOUNT, ComparisonOperator.GT, 1000.0),
+                new Expression.ConstantScore(3));
     }
 
     private static CustomerWindow window(double... amounts) {

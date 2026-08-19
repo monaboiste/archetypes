@@ -42,12 +42,12 @@ public class AlgebraicVisitor<R> implements ExpressionVisitor<R> {
     }
 
     @Override
-    public R visit(Expression.MetricCmp expr) {
+    public R visit(Expression.MetricComparison expr) {
         return algebra.metricCmp(metrics, expr.metric(), expr.op(), expr.value());
     }
 
     @Override
-    public R visit(Expression.ConstScore expr) {
+    public R visit(Expression.ConstantScore expr) {
         return algebra.constScore(expr.value());
     }
 
@@ -63,9 +63,9 @@ public class AlgebraicVisitor<R> implements ExpressionVisitor<R> {
     @Override
     public R visit(Expression.IfThenElse expr) {
         R cond = expr.cond().accept(this);
-        R thenV = expr.thenBranch().accept(this);
-        R elseV = expr.elseBranch().accept(this);
-        return algebra.ifThenElse(cond, thenV, elseV);
+        R thenValue = expr.thenBranch().accept(this);
+        R elseValue = expr.elseBranch().accept(this);
+        return algebra.ifThenElse(cond, thenValue, elseValue);
     }
 
     @Override

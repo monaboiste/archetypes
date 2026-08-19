@@ -15,8 +15,8 @@ public class PercentageAccumulated implements Function<OfferItem, Money> {
 
     @Override
     public Money apply(OfferItem offerItem) {
-        Money mod = offerItem.getFinalPrice().multiply(percentage);
-        return offerItem.getFinalPrice().subtract(mod);
+        Money discountAmount = offerItem.getFinalPrice().multiply(percentage);
+        return offerItem.getFinalPrice().subtract(discountAmount);
     }
 
     public Percentage getPercentage() {

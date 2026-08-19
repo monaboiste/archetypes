@@ -7,13 +7,13 @@ public interface ExpressionVisitor<R> {
 
     R visit(Expression.Not not);
 
-    R visit(Expression.ConstScore constScore);
+    R visit(Expression.ConstantScore constantScore);
 
     R visit(Expression.Sum sum);
 
     R visit(Expression.IfThenElse ifThenElse);
 
-    R visit(Expression.MetricCmp metricCmp);
+    R visit(Expression.MetricComparison metricComparison);
 
     R visit(Expression.Labeled labeled);
 }
