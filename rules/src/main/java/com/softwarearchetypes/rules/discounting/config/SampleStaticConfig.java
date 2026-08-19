@@ -2,42 +2,49 @@ package com.softwarearchetypes.rules.discounting.config;
 
 import com.softwarearchetypes.quantity.money.Money;
 import com.softwarearchetypes.quantity.money.Percentage;
-import com.softwarearchetypes.rules.discounting.OfferItemModifier;
+import com.softwarearchetypes.rules.core.ConfigurableModifier;
+import com.softwarearchetypes.rules.core.Modifier;
+import com.softwarearchetypes.rules.core.selection.CandidateRule;
 import com.softwarearchetypes.rules.discounting.client.ClientContext;
 import com.softwarearchetypes.rules.discounting.client.ClientStatus;
 import com.softwarearchetypes.rules.discounting.client.rules.ExpensesRule;
 import com.softwarearchetypes.rules.discounting.client.rules.StatusRule;
 import com.softwarearchetypes.rules.discounting.client.rules.TimeBeingCustomer;
-import com.softwarearchetypes.rules.discounting.offer.modifiers.ConfigurableItemModifier;
+import com.softwarearchetypes.rules.discounting.offer.OfferItem;
+import com.softwarearchetypes.rules.discounting.offer.PriceChangeApplicator;
 import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.applier.PercentageFromBase;
 import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.guardians.EmptyGuardian;
 import com.softwarearchetypes.rules.discounting.offer.modifiers.functors.predicates.MoreExpensiveThanPredicate;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.function.Predicate;
 
-public class SampleStaticConfig implements ConfigProvider{
-    @Override
-    public Map<OfferItemModifier, Predicate<ClientContext>> loadConfig() {
-        Map<OfferItemModifier, Predicate<ClientContext>> configuration = new HashMap<>();
+// The simplest configuration: the rule map lives in code. Every rule is assembled from reusable
+// core blocks, so a change here is a change of data, not of an algorithm.
+public class SampleStaticConfig implements ConfigProvider {
 
-        OfferItemModifier mod1 = new ConfigurableItemModifier(
+    @Override
+    public List<CandidateRule<ClientContext, OfferItem>> load() {
+        Modifier<OfferItem> mod1 = new ConfigurableModifier<OfferItem, Money>(
                 "3 years of VIPs",
                 new MoreExpensiveThanPredicate(Money.pln(50)),
                 new PercentageFromBase(Percentage.of(10)),
-                EmptyGuardian.INSTANCE);
+                EmptyGuardian.INSTANCE,
+                PriceChangeApplicator.INSTANCE);
+        // selection predicate: a Specification tree over data known before pricing
         Predicate<ClientContext> pred1 = StatusRule.of(ClientStatus.VIP).and(TimeBeingCustomer.ofYears(3));
-        configuration.put(mod1, pred1);
 
-        OfferItemModifier mod2 = new ConfigurableItemModifier(
+        Modifier<OfferItem> mod2 = new ConfigurableModifier<OfferItem, Money>(
                 "VIPs - big fish",
                 new MoreExpensiveThanPredicate(Money.pln(100)),
                 new PercentageFromBase(Percentage.of(10)),
-                EmptyGuardian.INSTANCE);
+                EmptyGuardian.INSTANCE,
+                PriceChangeApplicator.INSTANCE);
         Predicate<ClientContext> pred2 = StatusRule.of(ClientStatus.VIP).and(ExpensesRule.of(Money.pln(500000)));
-        configuration.put(mod2, pred2);
 
-        return configuration;
+        // a List, not a Map: the order in which the modifiers run is part of the business decision
+        return List.of(
+                new CandidateRule<>(mod1, pred1),
+                new CandidateRule<>(mod2, pred2));
     }
 }

@@ -1,10 +1,9 @@
 package com.softwarearchetypes.rules.discounting.offer.modifiers.functors.predicates;
 
+import com.softwarearchetypes.rules.core.predicates.RichLogicalPredicate;
 import com.softwarearchetypes.rules.discounting.offer.OfferItem;
-import com.softwarearchetypes.rules.predicates.RichLogicalPredicate;
 
 import java.util.UUID;
-import java.util.function.Predicate;
 
 public class ItemIdPredicate implements RichLogicalPredicate<OfferItem> {
     private final UUID productId;

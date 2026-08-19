@@ -1,12 +1,11 @@
 package com.softwarearchetypes.rules.discounting.client.rules;
 
+import com.softwarearchetypes.rules.core.predicates.RichLogicalPredicate;
 import com.softwarearchetypes.rules.discounting.client.ClientContext;
-import com.softwarearchetypes.rules.predicates.RichLogicalPredicate;
 
 import java.time.LocalDate;
 import java.time.Period;
 import java.time.temporal.ChronoUnit;
-import java.util.function.Predicate;
 
 public class TimeBeingCustomer implements RichLogicalPredicate<ClientContext> {
 
@@ -37,7 +36,7 @@ public class TimeBeingCustomer implements RichLogicalPredicate<ClientContext> {
     @Override
     public boolean test(ClientContext clientContext) {
         Period period = Period.between(clientContext.firstOrder(), LocalDate.now());
-        switch (unit){
+        switch (unit) {
             case DAYS: {
                 return period.getDays() >= threshold;
             }

@@ -1,9 +1,9 @@
 package com.softwarearchetypes.scoring.algebra.fuzzy;
 
 import com.softwarearchetypes.scoring.algebra.Algebra;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.Metric;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.context.MetricSource;
 
 import java.util.List;
 import java.util.Map;
@@ -17,36 +17,36 @@ public class FuzzyAlgebra implements Algebra<FuzzyValue> {
     }
 
     @Override
-    public FuzzyValue and(FuzzyValue a, FuzzyValue b) {
-        return new FuzzyValue(Math.min(a.degree(), b.degree()));
+    public FuzzyValue and(FuzzyValue left, FuzzyValue right) {
+        return new FuzzyValue(Math.min(left.degree(), right.degree()));
     }
 
     @Override
-    public FuzzyValue or(FuzzyValue a, FuzzyValue b) {
-        return new FuzzyValue(Math.max(a.degree(), b.degree()));
+    public FuzzyValue or(FuzzyValue left, FuzzyValue right) {
+        return new FuzzyValue(Math.max(left.degree(), right.degree()));
     }
 
     @Override
-    public FuzzyValue not(FuzzyValue a) {
-        return new FuzzyValue(1.0 - a.degree());
+    public FuzzyValue not(FuzzyValue inner) {
+        return new FuzzyValue(1.0 - inner.degree());
     }
 
     @Override
-    public FuzzyValue metricCmp(WindowContext ctx, Metric metric, CmpOp op, double value) {
-        double v = ctx.getMetric(metric);
+    public FuzzyValue metricCmp(MetricSource source, Metric metric, ComparisonOperator op, double value) {
+        double metricValue = source.metric(metric);
         double margin = margins.getOrDefault(metric, 0.0);
 
         if (margin <= 0.0) {
-            boolean crisp = op.compare(v, value);
+            boolean crisp = op.compare(metricValue, value);
             return new FuzzyValue(crisp ? 1.0 : 0.0);
         }
 
         return switch (op) {
-            case GT  -> fuzzyGreater(v, value, margin);
-            case GTE -> fuzzyGreater(v, value - 0.1 * margin, margin);
-            case LT  -> fuzzyLess(v, value, margin);
-            case LTE -> fuzzyLess(v, value + 0.1 * margin, margin);
-            case EQ  -> fuzzyEqual(v, value, margin);
+            case GT -> fuzzyGreater(metricValue, value, margin);
+            case GTE -> fuzzyGreater(metricValue, value - 0.1 * margin, margin);
+            case LT -> fuzzyLess(metricValue, value, margin);
+            case LTE -> fuzzyLess(metricValue, value + 0.1 * margin, margin);
+            case EQ -> fuzzyEqual(metricValue, value, margin);
         };
     }
 
@@ -77,15 +77,15 @@ public class FuzzyAlgebra implements Algebra<FuzzyValue> {
     @Override
     public FuzzyValue sum(List<FuzzyValue> children) {
         double total = 0.0;
-        for (FuzzyValue fv : children) total += fv.degree();
+        for (FuzzyValue fuzzyValue : children) total += fuzzyValue.degree();
         if (total > 1.0) total = 1.0;
         return new FuzzyValue(total);
     }
 
     @Override
-    public FuzzyValue ifThenElse(FuzzyValue cond, FuzzyValue thenV, FuzzyValue elseV) {
-        double c = cond.degree();
-        double res = c * thenV.degree() + (1.0 - c) * elseV.degree();
-        return new FuzzyValue(res);
+    public FuzzyValue ifThenElse(FuzzyValue cond, FuzzyValue thenValue, FuzzyValue elseValue) {
+        double conditionDegree = cond.degree();
+        double result = conditionDegree * thenValue.degree() + (1.0 - conditionDegree) * elseValue.degree();
+        return new FuzzyValue(result);
     }
 }

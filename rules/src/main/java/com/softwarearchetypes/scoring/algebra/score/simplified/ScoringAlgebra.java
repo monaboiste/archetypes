@@ -1,9 +1,9 @@
 package com.softwarearchetypes.scoring.algebra.score.simplified;
 
 import com.softwarearchetypes.scoring.algebra.score.Score;
-import com.softwarearchetypes.scoring.ast.CmpOp;
+import com.softwarearchetypes.scoring.ast.ComparisonOperator;
 import com.softwarearchetypes.scoring.ast.Metric;
-import com.softwarearchetypes.scoring.context.WindowContext;
+import com.softwarearchetypes.scoring.context.MetricSource;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ public interface ScoringAlgebra {
 
     Score not(Score a);
 
-    Score metricCmp(WindowContext ctx, Metric metric, CmpOp op, double value);
+    Score metricCmp(MetricSource source, Metric metric, ComparisonOperator op, double value);
 
     Score constScore(int value);
 
