@@ -241,6 +241,26 @@ Product collaborates with other archetypes: `Party` provides participant and per
 determines price and conditions, `Billing` settles specific types and instances, and `Inventory` tracks the
 physical or operational availability.
 
+## Bridge words for recognising Product
+
+Some business words are signals that a concept may need an explicit Product model rather than a field, screen, or
+price. Treat them as prompts to look for a definition, instance, features, constraints, lifecycle, or package
+structure:
+
+| Polish word | English translation | What it commonly signals in the Product archetype |
+| --- | --- | --- |
+| **ugoda** | settlement | A product or package representing an agreed resolution, with terms, obligations, and a concrete instance. |
+| **pakiet** | package | `PackageType`, `ProductSet`, and `SelectionRule`, rather than a list of optional IDs. |
+| **abonament** | subscription | A recurring product with a term, validity, configurable features, and realised customer instances. |
+| **plan** | plan | A product variant with features, applicability rules, and relationships such as upgrade or substitution. |
+| **limit** | limit | A product feature or constraint that defines allowed quantity, usage, or eligibility. |
+| **rata** | instalment | A concrete financial or service product with amount, due date, status, and lifecycle. |
+| **opłata** | fee / charge | A charge or cost that may be modelled as a product when it has its own rules, identity, or lifecycle. |
+| **bonus** | bonus | A benefit or entitlement product, often with applicability, validity, quantity, and redemption rules. |
+
+These words do not prescribe one class. They point to a modelling question: what is the definition, what is the
+instance, which features and constraints apply, and does Pricing calculate a separate value for it?
+
 ### M02L12 — Product in four perspectives
 
 The final lesson synthesises the module. A product is the language in which the system understands its own
