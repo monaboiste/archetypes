@@ -12,6 +12,34 @@ The running example throughout the module is **EV charging** (electromobility), 
 challenge in one domain: time-dependent rates, multi-party revenue splits, VAT, versioned tariff changes, and
 retroactive billing.
 
+## Bridge words for recognising Pricing
+
+The following words are useful signals during domain discovery. They point to pricing rules and questions, not to a
+single `price` attribute:
+
+| Polish word / phrase | English translation | What it signals in the Pricing archetype |
+| --- | --- | --- |
+| **Cena** | price | A rule for calculating value, not an attribute. |
+| **Stawka** | rate | A rule for calculating value, not an attribute. |
+| **Taryfa** | tariff | A rule for calculating value, not an attribute. |
+| **Rabat** | discount | A conditional rule that changes the result. |
+| **Zniżka** | discount | A conditional rule that changes the result. |
+| **Promocja** | promotion | A conditional rule that changes the result. |
+| **Odsetki** | interest | A calculator that depends on time and context. |
+| **Kara** | penalty | A conditional component. |
+| **Opłata dodatkowa** | surcharge | A conditional component. |
+| **Podatek** | tax | An always-applicable component, independent of the product. |
+| **VAT** | VAT | An always-applicable component, independent of the product. |
+| **Prowizja** | commission | A value dependent on another value, often a percentage calculator or a composite component with an explicit calculation base. |
+| **Limit** | limit | A stepped or volume-based rule, typically a step-function calculator. |
+| **Próg** | threshold | A stepped or volume-based rule, typically a step-function calculator. |
+| **„Dlaczego klient X ma inaczej?”** | “Why is customer X treated differently?” | Applicability and customer segmentation. |
+| **„Od kiedy to obowiązuje?”** | “Since when does this apply?” | Temporal versioning. |
+
+These words are bridge terms between business language and model choices: calculator, component, applicability rule,
+or validity period. The exact choice depends on whether the term changes the formula, eligibility, composition, or
+period of validity.
+
 ---
 
 ## L01 - Price as Business Value
