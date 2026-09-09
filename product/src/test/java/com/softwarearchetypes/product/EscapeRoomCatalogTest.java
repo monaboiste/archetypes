@@ -163,4 +163,72 @@ class EscapeRoomCatalogTest {
                 LocalDate.of(2025, 1, 1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // -------------------------------------------------------------------------
+    // Relationships (point 5) - room upgrade path, room/add-on complements,
+    // and Cyberpunk's mutual exclusivity with the other rooms.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void rooms_form_a_difficulty_upgrade_path() {
+        List<ProductRelationship> relationships = EscapeRoomCatalog.relationships();
+
+        assertThat(relationships).anySatisfy(r -> assertThat(r)
+                .extracting(ProductRelationship::from, ProductRelationship::to, ProductRelationship::type)
+                .containsExactly(EscapeRoomCatalog.ID_EGYPTIAN_TOMB, EscapeRoomCatalog.ID_MAD_SCIENTIST_LAB,
+                        ProductRelationshipType.UPGRADABLE_TO));
+        assertThat(relationships).anySatisfy(r -> assertThat(r)
+                .extracting(ProductRelationship::from, ProductRelationship::to, ProductRelationship::type)
+                .containsExactly(EscapeRoomCatalog.ID_MAD_SCIENTIST_LAB, EscapeRoomCatalog.ID_ALCATRAZ,
+                        ProductRelationshipType.UPGRADABLE_TO));
+        assertThat(relationships).anySatisfy(r -> assertThat(r)
+                .extracting(ProductRelationship::from, ProductRelationship::to, ProductRelationship::type)
+                .containsExactly(EscapeRoomCatalog.ID_ALCATRAZ, EscapeRoomCatalog.ID_CYBERPUNK_2077,
+                        ProductRelationshipType.UPGRADABLE_TO));
+    }
+
+    @Test
+    void every_room_is_complemented_by_every_add_on() {
+        List<ProductRelationship> relationships = EscapeRoomCatalog.relationships();
+
+        List<ProductIdentifier> rooms = List.of(
+                EscapeRoomCatalog.ID_MAD_SCIENTIST_LAB, EscapeRoomCatalog.ID_ALCATRAZ,
+                EscapeRoomCatalog.ID_EGYPTIAN_TOMB, EscapeRoomCatalog.ID_CYBERPUNK_2077);
+        List<ProductIdentifier> addOns = List.of(
+                EscapeRoomCatalog.ID_ACTOR, EscapeRoomCatalog.ID_PHOTO_VIDEO,
+                EscapeRoomCatalog.ID_CATERING, EscapeRoomCatalog.ID_DEDICATED_GM);
+
+        for (ProductIdentifier room : rooms) {
+            for (ProductIdentifier addOn : addOns) {
+                assertThat(relationships)
+                        .as("Room %s should be COMPLEMENTED_BY add-on %s", room, addOn)
+                        .anySatisfy(r -> assertThat(r)
+                                .extracting(ProductRelationship::from, ProductRelationship::to, ProductRelationship::type)
+                                .containsExactly(room, addOn, ProductRelationshipType.COMPLEMENTED_BY));
+            }
+        }
+    }
+
+    @Test
+    void cyberpunk_is_incompatible_with_the_other_rooms() {
+        List<ProductRelationship> relationships = EscapeRoomCatalog.relationships();
+
+        List<ProductRelationship> incompatible = relationships.stream()
+                .filter(r -> r.from().equals(EscapeRoomCatalog.ID_CYBERPUNK_2077))
+                .filter(r -> r.type() == ProductRelationshipType.INCOMPATIBLE_WITH)
+                .toList();
+
+        assertThat(incompatible)
+                .extracting(ProductRelationship::to)
+                .containsExactlyInAnyOrder(
+                        EscapeRoomCatalog.ID_EGYPTIAN_TOMB,
+                        EscapeRoomCatalog.ID_MAD_SCIENTIST_LAB,
+                        EscapeRoomCatalog.ID_ALCATRAZ);
+    }
+
+    @Test
+    void no_relationship_ever_relates_a_product_to_itself() {
+        assertThat(EscapeRoomCatalog.relationships())
+                .noneMatch(r -> r.from().equals(r.to()));
+    }
 }
