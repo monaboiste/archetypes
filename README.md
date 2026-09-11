@@ -16,3 +16,7 @@ Więcej informacji w pliku [LICENSE](LICENSE).
 - Bartłomiej Słota
 - Jakub Pilimon
 - Sławomir Sobótka
+
+## Linki
+
+- <https://mintlify.wiki/Archetypy-Oprogramowania/archetypes/llms.txt>
