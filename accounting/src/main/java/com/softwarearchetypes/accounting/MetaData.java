@@ -5,6 +5,11 @@ import java.util.Map;
 
 public record MetaData(Map<String, String> metadata) {
 
+    public MetaData {
+        // Immutable Value Object (L03): caller-owned maps must not rewrite historical entry context.
+        metadata = Map.copyOf(metadata);
+    }
+
     public static final MetaData EMPTY = new MetaData(Map.of());
 
     static MetaData empty() {

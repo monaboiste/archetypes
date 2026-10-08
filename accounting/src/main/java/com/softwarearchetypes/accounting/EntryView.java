@@ -10,7 +10,13 @@ public record EntryView(EntryId entryId,
                         TransactionId transactionId,
                         AccountId accountId,
                         Instant occurredAt,
-                        Instant appliesAt) {
+                        Instant appliesAt,
+                        MetaData metadata) {
+
+    public EntryView(EntryId entryId, EntryType type, Money amount, TransactionId transactionId,
+                     AccountId accountId, Instant occurredAt, Instant appliesAt) {
+        this(entryId, type, amount, transactionId, accountId, occurredAt, appliesAt, MetaData.empty());
+    }
 
     //intentionally left package-scoped
     static EntryView from(Entry entry) {
@@ -20,7 +26,9 @@ public record EntryView(EntryId entryId,
                 entry.transactionId(),
                 entry.accountId(),
                 entry.occurredAt(),
-                entry.appliesAt());
+                entry.appliesAt(),
+                // Read model (L08): expose the original entry's context, not a separate audit record.
+                entry.metadata());
     }
 
     public enum EntryType {
