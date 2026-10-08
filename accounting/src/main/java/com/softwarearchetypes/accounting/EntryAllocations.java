@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import com.softwarearchetypes.quantity.money.Money;
+
 import static com.softwarearchetypes.accounting.EntryAllocationStrategy.MANUAL;
 
 class EntryAllocations {
@@ -18,6 +20,17 @@ class EntryAllocations {
 
     Optional<Entry> findAllocationFor(EntryAllocationFilter filter) {
         return entryRepository.findMatching(filter.predicate(), filter.comparator());
+    }
+
+    Optional<Entry> findSource(EntryId sourceId) {
+        return entryRepository.find(sourceId);
+    }
+
+    Money remainingAmount(Entry source) {
+        return entryRepository.findEntriesReferencing(source).stream()
+                .filter(entry -> entry.accountId().equals(source.accountId()))
+                .map(Entry::amount)
+                .reduce(source.amount(), Money::add);
     }
 
 }

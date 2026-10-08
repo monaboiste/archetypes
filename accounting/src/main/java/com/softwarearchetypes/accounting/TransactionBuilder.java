@@ -220,7 +220,8 @@ public class TransactionBuilder {
             Map<AccountId, Account> accountsInvolved = accountRepository.find(involvedAccountsIds);
             if (accountsInvolved.size() == involvedAccountsIds.size()) {
                 Map<Entry, Account> entriesWithAccounts = entries.stream().collect(toMap(it -> it, it -> accountsInvolved.get(it.accountId())));
-                return new Transaction(transactionId, null, type, occurredAt, appliesAt, entriesWithAccounts, transactionEntriesConstraint);
+                return new Transaction(transactionId, null, type, occurredAt, appliesAt, entriesWithAccounts,
+                        transactionEntriesConstraint.and(new DebitAllocationConstraint(entryAllocations)));
             } else {
                 String missingAccountIds = subtract(involvedAccountsIds, accountsInvolved.keySet()).stream()
                                                                                                    .map(AccountId::uuid)

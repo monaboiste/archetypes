@@ -1,6 +1,7 @@
 package com.softwarearchetypes.accounting;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import com.softwarearchetypes.quantity.money.Money;
 
@@ -11,11 +12,17 @@ public record EntryView(EntryId entryId,
                         AccountId accountId,
                         Instant occurredAt,
                         Instant appliesAt,
-                        MetaData metadata) {
+                        MetaData metadata,
+                        Optional<EntryId> appliedTo) {
 
     public EntryView(EntryId entryId, EntryType type, Money amount, TransactionId transactionId,
                      AccountId accountId, Instant occurredAt, Instant appliesAt) {
         this(entryId, type, amount, transactionId, accountId, occurredAt, appliesAt, MetaData.empty());
+    }
+
+    public EntryView(EntryId entryId, EntryType type, Money amount, TransactionId transactionId,
+                     AccountId accountId, Instant occurredAt, Instant appliesAt, MetaData metadata) {
+        this(entryId, type, amount, transactionId, accountId, occurredAt, appliesAt, metadata, Optional.empty());
     }
 
     //intentionally left package-scoped
@@ -28,7 +35,9 @@ public record EntryView(EntryId entryId,
                 entry.occurredAt(),
                 entry.appliesAt(),
                 // Read model (L08): expose the original entry's context, not a separate audit record.
-                entry.metadata());
+                entry.metadata(),
+                // Allocation (L06): retain the source-entry link so reads can reconstruct consumption.
+                entry.appliedTo());
     }
 
     public enum EntryType {

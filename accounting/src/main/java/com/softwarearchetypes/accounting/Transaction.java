@@ -1,6 +1,7 @@
 package com.softwarearchetypes.accounting;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ public final class Transaction {
     private final TransactionType type;
     private final Instant occurredAt;
     private final Instant appliesAt;
+    private final TransactionEntriesConstraint transactionEntriesConstraint;
     //transient
     private Map<Account, List<Entry>> entries;
 
@@ -36,7 +38,8 @@ public final class Transaction {
         // accounts are involved - these cases were moved to TransactionEntriesConstraint implementation
         // checkArgument(entries != null && entries.size() >= 2, "Transaction must have at least 2 entries");
         // checkArgument(new HashSet<>(entries.values()).size() >= 2, "Transaction must involve at least 2 accounts");
-        checkArgument(transactionEntriesConstraint.test(entries), transactionEntriesConstraint.errorMessage());
+        transactionEntriesConstraint.validate(entries);
+        this.transactionEntriesConstraint = transactionEntriesConstraint;
         this.id = id;
         this.refId = refId;
         this.type = type;
@@ -75,6 +78,10 @@ public final class Transaction {
 
     //intentionally left non-public
     void execute() {
+        Map<Entry, Account> entriesWithAccounts = new HashMap<>();
+        entries.forEach((account, postings) -> postings.forEach(entry -> entriesWithAccounts.put(entry, account)));
+        // Command preconditions (L04/L09): recheck current allocations before mutating any account.
+        transactionEntriesConstraint.validate(entriesWithAccounts);
         entries.forEach(Account::addEntries);
     }
 
@@ -83,6 +90,32 @@ public final class Transaction {
 interface TransactionEntriesConstraint extends Predicate<Map<Entry, Account>> {
 
     String errorMessage();
+
+    default void validate(Map<Entry, Account> entries) {
+        checkArgument(test(entries), errorMessage());
+    }
+
+    default TransactionEntriesConstraint and(TransactionEntriesConstraint other) {
+        TransactionEntriesConstraint first = this;
+        // Composite Specification (L09): retain each rule's failure message when combining policies.
+        return new TransactionEntriesConstraint() {
+            @Override
+            public String errorMessage() {
+                return first.errorMessage() + "; " + other.errorMessage();
+            }
+
+            @Override
+            public boolean test(Map<Entry, Account> entries) {
+                return first.test(entries) && other.test(entries);
+            }
+
+            @Override
+            public void validate(Map<Entry, Account> entries) {
+                first.validate(entries);
+                other.validate(entries);
+            }
+        };
+    }
 
     //TODO
     default boolean isApplicable(Map<Entry, Account> entries) {
