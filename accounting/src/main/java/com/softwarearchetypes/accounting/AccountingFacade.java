@@ -318,7 +318,13 @@ class AccountViewQueries {
     }
 
     private AccountView projectionAccountViewFrom(AccountId accountId, ProjectionAccount projection) {
-        List<EntryView> filteredEntries = entryRepository.findAllMatching(projection.filter().entryFilter())
+        // Projection Account (L08): account selection and entry selection both restrict the original facts.
+        Set<AccountId> sourceAccounts = accountRepository.findAll().stream()
+                .filter(projection.filter().accountFilter())
+                .map(Account::id)
+                .collect(toSet());
+        List<EntryView> filteredEntries = entryRepository.findAllMatching(projection.filter().entryFilter()
+                        .and(entry -> sourceAccounts.contains(entry.accountId())))
                                                          .stream()
                                                          .map(EntryView::from)
                                                          .collect(toList());
