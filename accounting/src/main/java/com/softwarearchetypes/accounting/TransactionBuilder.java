@@ -98,7 +98,7 @@ public class TransactionBuilder {
         return new ReverseTransactionEntriesBuilder(refTransaction);
     }
 
-    ExpirationCompensationTransactionEntriesBuilder compensatingExpired(EntryId entryId) {
+    public ExpirationCompensationTransactionEntriesBuilder compensatingExpired(EntryId entryId) {
         Entry entry = entryRepository.find(entryId).orElseThrow(() -> new IllegalArgumentException(String.format("Entry %s does not exist", entryId)));
         return compensatingExpired(entry);
     }
@@ -299,7 +299,6 @@ public class TransactionBuilder {
 
         private final Entry refEntry;
         private final Account account;
-        private final Map<Entry, Account> entries = new HashMap<>();
         private Account compensationAccount;
 
         ExpirationCompensationTransactionEntriesBuilder(Entry refEntry) {
@@ -309,17 +308,19 @@ public class TransactionBuilder {
                                             .orElseThrow(() -> new IllegalArgumentException(String.format("Account %s does not exist", refEntry.accountId())));
         }
 
-        ExpirationCompensationTransactionEntriesBuilder withCompensationAccount(AccountId accountId) {
+        public ExpirationCompensationTransactionEntriesBuilder withCompensationAccount(AccountId accountId) {
             this.compensationAccount = accountRepository.find(accountId)
-                                                        .orElseThrow(() -> new IllegalArgumentException(String.format("Compensation account %s does not exist", refEntry.accountId())));
+                                                        .orElseThrow(() -> new IllegalArgumentException(String.format("Compensation account %s does not exist", accountId)));
             return this;
         }
 
         public Optional<Transaction> build() {
-            Money remainingAmount = calculateRemainingAmount();
+            // Allocation (L06): counterpart references on other accounts do not restore the source's remainder.
+            Money remainingAmount = entryAllocations.remainingAmount(refEntry);
             if (remainingAmount.isZero()) {
                 return Optional.empty();
             } else {
+                Map<Entry, Account> entries = new HashMap<>();
                 if (refEntry instanceof AccountCredited) {
                     entries.put(new AccountDebited(refEntry.accountId(), transactionId, remainingAmount.abs(), appliesAt, occurredAt, metadata, refEntry.id()), account);
                     if (compensationAccount != null) {
@@ -332,18 +333,11 @@ public class TransactionBuilder {
                     }
                 }
                 return Optional.of(
-                        new Transaction(transactionId, null, EXPIRATION_COMPENSATION, occurredAt, appliesAt, entries, transactionEntriesConstraint)
+                        new Transaction(transactionId, refEntry.transactionId(), EXPIRATION_COMPENSATION, occurredAt, appliesAt, entries,
+                                transactionEntriesConstraint.and(new ExpirationCompensationConstraint(refEntry, entryAllocations, clock)))
                 );
             }
         }
 
-        private Money calculateRemainingAmount() {
-            Money referencingEntriesTotalAmount = entryRepository.findEntriesReferencing(refEntry)
-                                                                 .stream()
-                                                                 .map(Entry::amount)
-                                                                 .reduce(Money.zeroPln(), Money::add);
-
-            return refEntry.amount().add(referencingEntriesTotalAmount);
-        }
     }
 }

@@ -13,7 +13,8 @@ public record EntryView(EntryId entryId,
                         Instant occurredAt,
                         Instant appliesAt,
                         MetaData metadata,
-                        Optional<EntryId> appliedTo) {
+                        Optional<EntryId> appliedTo,
+                        Validity validity) {
 
     public EntryView(EntryId entryId, EntryType type, Money amount, TransactionId transactionId,
                      AccountId accountId, Instant occurredAt, Instant appliesAt) {
@@ -23,6 +24,12 @@ public record EntryView(EntryId entryId,
     public EntryView(EntryId entryId, EntryType type, Money amount, TransactionId transactionId,
                      AccountId accountId, Instant occurredAt, Instant appliesAt, MetaData metadata) {
         this(entryId, type, amount, transactionId, accountId, occurredAt, appliesAt, metadata, Optional.empty());
+    }
+
+    public EntryView(EntryId entryId, EntryType type, Money amount, TransactionId transactionId,
+                     AccountId accountId, Instant occurredAt, Instant appliesAt, MetaData metadata,
+                     Optional<EntryId> appliedTo) {
+        this(entryId, type, amount, transactionId, accountId, occurredAt, appliesAt, metadata, appliedTo, Validity.always());
     }
 
     //intentionally left package-scoped
@@ -37,7 +44,9 @@ public record EntryView(EntryId entryId,
                 // Read model (L08): expose the original entry's context, not a separate audit record.
                 entry.metadata(),
                 // Allocation (L06): retain the source-entry link so reads can reconstruct consumption.
-                entry.appliedTo());
+                entry.appliedTo(),
+                // Validity (L06): readers can discover deadlines without inferring them from posting times.
+                entry.validity());
     }
 
     public enum EntryType {
