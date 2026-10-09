@@ -59,7 +59,11 @@ public class PostingRulesFacade {
     }
 
     public Result<String, Set<TransactionId>> executeRulesFor(List<EntryView> triggeringEntries) {
-        PostingContext context = new PostingContext(triggeringEntries, accountingFacade, clock);
-        return postingRuleExecutor.executeEligibleRules(context, accountingFacade::execute);
+        try {
+            PostingContext context = new PostingContext(triggeringEntries, accountingFacade, clock);
+            return postingRuleExecutor.executeEligibleRules(context, accountingFacade::execute);
+        } catch (RuntimeException ex) {
+            return Result.failure(ex.getMessage());
+        }
     }
 }
