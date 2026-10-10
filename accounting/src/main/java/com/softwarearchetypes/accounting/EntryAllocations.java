@@ -1,14 +1,19 @@
 package com.softwarearchetypes.accounting;
 
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import com.softwarearchetypes.quantity.money.Money;
 
 import static com.softwarearchetypes.accounting.EntryAllocationStrategy.MANUAL;
+import static com.softwarearchetypes.common.Preconditions.checkArgument;
 
 class EntryAllocations {
 
@@ -27,10 +32,34 @@ class EntryAllocations {
     }
 
     Money remainingAmount(Entry source) {
-        return entryRepository.findEntriesReferencing(source).stream()
-                .filter(entry -> entry.accountId().equals(source.accountId()))
-                .map(Entry::amount)
-                .reduce(source.amount(), Money::add);
+        // Allocation + Reversal (L05/L06): descendants include corrections to consumption, not just direct uses.
+        var pending = new ArrayDeque<Entry>();
+        Set<EntryId> visited = new HashSet<>();
+        Money remaining = Money.zero(source.amount().currency());
+        pending.add(source);
+        while (!pending.isEmpty()) {
+            Entry entry = pending.removeFirst();
+            checkArgument(visited.add(entry.id()), "Allocation references must not contain cycles");
+            remaining = remaining.add(entry.amount());
+            entryRepository.findEntriesReferencing(entry).stream()
+                    .filter(child -> child.accountId().equals(source.accountId()))
+                    .forEach(pending::addLast);
+        }
+        return remaining;
+    }
+
+    List<Entry> ancestorsOf(Entry entry) {
+        List<Entry> ancestors = new ArrayList<>();
+        Set<EntryId> visited = new HashSet<>();
+        visited.add(entry.id());
+        Optional<Entry> parent = entry.appliedTo().flatMap(this::findSource);
+        while (parent.isPresent() && parent.get().accountId().equals(entry.accountId())) {
+            Entry source = parent.get();
+            checkArgument(visited.add(source.id()), "Allocation references must not contain cycles");
+            ancestors.add(source);
+            parent = source.appliedTo().flatMap(this::findSource);
+        }
+        return List.copyOf(ancestors);
     }
 
 }

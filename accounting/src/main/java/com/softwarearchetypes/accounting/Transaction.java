@@ -25,7 +25,7 @@ public final class Transaction {
     private final Instant appliesAt;
     private final TransactionEntriesConstraint transactionEntriesConstraint;
     //transient
-    private Map<Account, List<Entry>> entries;
+    private final Map<Account, List<Entry>> entries;
 
     //package private
     Transaction(TransactionId id, TransactionId refId, TransactionType type, Instant occurredAt, Instant appliesAt,
@@ -45,7 +45,10 @@ public final class Transaction {
         this.type = type;
         this.occurredAt = occurredAt;
         this.appliesAt = appliesAt;
-        this.entries = entries.entrySet().stream().collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, Collectors.toList())));
+        // Historical facts (L03): neither the account grouping nor its posting lists may be rewritten.
+        Map<Account, List<Entry>> grouped = entries.entrySet().stream()
+                .collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, Collectors.toUnmodifiableList())));
+        this.entries = Map.copyOf(grouped);
     }
 
     public TransactionId id() {

@@ -268,7 +268,8 @@ public class TransactionBuilder {
             Map<AccountId, Account> accountsInvolved = accountRepository.find(involvedAccountsIds);
             if (accountsInvolved.size() == involvedAccountsIds.size()) {
                 Map<Entry, Account> entriesWithAccounts = entries.stream().collect(toMap(it -> it, it -> accountsInvolved.get(it.accountId())));
-                return new Transaction(transactionId, refTransaction.id(), REVERSAL, occurredAt, appliesAt, entriesWithAccounts, transactionEntriesConstraint);
+                return new Transaction(transactionId, refTransaction.id(), REVERSAL, occurredAt, appliesAt, entriesWithAccounts,
+                        transactionEntriesConstraint.and(new ReversalConstraint(refTransaction, entryAllocations)));
             } else {
                 String missingAccountIds = subtract(involvedAccountsIds, accountsInvolved.keySet()).stream()
                                                                                                    .map(AccountId::uuid)
@@ -279,9 +280,13 @@ public class TransactionBuilder {
         }
 
         private void revert(Entry entry) {
+            // Reversal (L05): retain the original context and attach the operator's correction details.
+            Map<String, String> context = new HashMap<>(entry.metadata().metadata());
+            context.putAll(metadata.metadata());
+            MetaData correctionMetadata = MetaData.of(context);
             Entry reverted = switch (entry) {
-                case AccountCredited e -> new AccountDebited(e.accountId(), transactionId, e.amount(), appliesAt, occurredAt, e.id());
-                case AccountDebited e -> new AccountCredited(e.accountId(), transactionId, e.amount().negate(), appliesAt, occurredAt, e.id());
+                case AccountCredited e -> new AccountDebited(e.accountId(), transactionId, e.amount(), appliesAt, occurredAt, correctionMetadata, e.id());
+                case AccountDebited e -> new AccountCredited(e.accountId(), transactionId, e.amount().negate(), appliesAt, occurredAt, correctionMetadata, e.id());
             };
             this.entries.add(reverted);
             involvedAccountsIds.add(entry.accountId());

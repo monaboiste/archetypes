@@ -172,11 +172,7 @@ public class AccountingFacade {
                                                                .debitFrom(from, amount)
                                                                .creditTo(to, amount)
                                                                .build();
-            transaction.execute();
-            transactionRepository.save(transaction);
-            //optimistic locking on every account involved in transaction
-            saveAccountsAndPublishEvents(transaction.accountsInvolved());
-            return Result.success(transaction.id());
+            return execute(transaction);
         } catch (Exception ex) {
             return Result.failure(ex.getMessage());
         }
@@ -186,7 +182,7 @@ public class AccountingFacade {
     public Result<String, Set<TransactionId>> execute(Transaction... transactions) {
         CompositeSetResult<String, TransactionId> result = Result.compositeSet();
         for (Transaction transaction : transactions) {
-            result.accumulate(execute(transaction));
+            result = result.accumulate(execute(transaction));
             if (result.failure()) {
                 return result.toResult();
             }
@@ -197,6 +193,13 @@ public class AccountingFacade {
     //db transaction
     public Result<String, TransactionId> execute(Transaction transaction) {
         try {
+            // Ledger identity (L03/L04): never overwrite or replay an already recorded transaction.
+            if (transactionRepository.find(transaction.id()).isPresent()) {
+                return Result.failure("Transaction " + transaction.id() + " already exists");
+            }
+            if (transaction.refId().filter(id -> transactionRepository.find(id).isEmpty()).isPresent()) {
+                return Result.failure("Referenced transaction " + transaction.refId().orElseThrow() + " does not exist");
+            }
             transaction.execute();
             transactionRepository.save(transaction);
             //optimistic locking on every account involved in transaction
