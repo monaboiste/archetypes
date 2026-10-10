@@ -82,7 +82,7 @@ public final class Transaction {
         entries.forEach((account, postings) -> postings.forEach(entry -> entriesWithAccounts.put(entry, account)));
         // Command preconditions (L04/L09): recheck current allocations before mutating any account.
         transactionEntriesConstraint.validate(entriesWithAccounts);
-        entries.forEach(Account::addEntries);
+        AccountPostingUnitOfWork.post(entries);
     }
 
 }
