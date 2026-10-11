@@ -23,8 +23,8 @@ class Account {
     private final Version version;
     //we do not load all accounts' entries when retrieving them from DB
     //adding new entries requires optimistic lock
-    private final Entries newEntries;
-    private final List<AccountingEvent> pendingEvents = new LinkedList<>();
+    private Entries newEntries;
+    private List<AccountingEvent> pendingEvents = new LinkedList<>();
 
     Account(AccountId accountId, AccountType type, AccountName name) {
         this(accountId, type, name, Version.initial());
@@ -48,17 +48,50 @@ class Account {
     }
 
     void addEntry(Entry entry) {
-        newEntries.add(entry);
-        balance = balance.add(entry.amount());
-        recordEntryEvent(entry);
+        addEntries(List.of(entry));
+    }
+
+    private void validateEntries(List<Entry> entries) {
+        // Aggregate invariants (L03/L09): only Account decides whether it can accept its entries.
+        for (Entry entry : entries) {
+            checkArgument(accountId.equals(entry.accountId()), "Entry must belong to the receiving account");
+            checkArgument(balance.currency().equals(entry.amount().currency()), "Entry currency must match account currency");
+        }
     }
 
     void addEntries(List<Entry> newEntries) {
+        validateEntries(newEntries);
         this.newEntries.addAll(newEntries);
         newEntries.forEach(entry -> {
             balance = balance.add(entry.amount());
             recordEntryEvent(entry);
         });
+    }
+
+    StagedPosting stageEntries(List<Entry> entries) {
+        // Unit of Work: apply normal aggregate behavior to detached state, including pending events.
+        Account staged = new Account(accountId, type, name, balance, version);
+        staged.newEntries = newEntries.copy();
+        staged.pendingEvents.addAll(pendingEvents);
+        staged.addEntries(entries);
+        return new StagedPosting(staged);
+    }
+
+    final class StagedPosting {
+        private final Account staged;
+        private boolean committed;
+
+        private StagedPosting(Account staged) {
+            this.staged = staged;
+        }
+
+        void commit() {
+            checkArgument(!committed, "Staged posting has already been committed");
+            balance = staged.balance;
+            newEntries = staged.newEntries;
+            pendingEvents = staged.pendingEvents;
+            committed = true;
+        }
     }
 
     String name() {

@@ -49,7 +49,7 @@ class Entries {
     }
 
     Entries copy() {
-        return new Entries(entries);
+        return new Entries(new ArrayList<>(entries));
     }
 
     Stream<Entry> stream() {

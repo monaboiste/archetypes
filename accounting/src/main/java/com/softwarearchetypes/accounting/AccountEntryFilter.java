@@ -9,6 +9,7 @@ import com.softwarearchetypes.quantity.money.Money;
 
 import static com.softwarearchetypes.accounting.EntryFilter.ENTRY_OF_ACCOUNT;
 import static com.softwarearchetypes.accounting.EntryFilter.ENTRY_OF_AMOUNT;
+import static com.softwarearchetypes.accounting.EntryFilter.ENTRY_OF_APPLICATION_DATE;
 import static com.softwarearchetypes.accounting.EntryFilter.ENTRY_OF_DATE;
 import static com.softwarearchetypes.accounting.EntryFilter.ENTRY_OF_METADATA;
 
@@ -17,6 +18,7 @@ public class AccountEntryFilter {
     private Predicate<String> accountDescPredicate = accountDesc -> true;
     private Predicate<AccountId> accountIdPredicate = accountId -> true;
     private Predicate<Instant> occuredAtPredicate = date -> true;
+    private Predicate<Instant> appliesAtPredicate = date -> true;
     private Predicate<Money> amountPredicate = amount -> true;
     private Predicate<Map<String, String>> metadataPredicate = metaData -> true;
 
@@ -39,6 +41,12 @@ public class AccountEntryFilter {
 
     public AccountEntryFilter onDate(Predicate<Instant> datePredicate) {
         this.occuredAtPredicate = occuredAtPredicate.and(datePredicate);
+        return this;
+    }
+
+    public AccountEntryFilter onAppliesAt(Predicate<Instant> datePredicate) {
+        // Bitemporal Entry (L02): accounting effect time is independent of business occurrence time.
+        this.appliesAtPredicate = appliesAtPredicate.and(datePredicate);
         return this;
     }
 
@@ -72,6 +80,7 @@ public class AccountEntryFilter {
         Predicate<Entry> entryFilter = ENTRY_OF_ACCOUNT(accountIdPredicate)
                 .and(ENTRY_OF_METADATA(metadataPredicate))
                 .and(ENTRY_OF_DATE(occuredAtPredicate))
+                .and(ENTRY_OF_APPLICATION_DATE(appliesAtPredicate))
                 .and(ENTRY_OF_AMOUNT(amountPredicate));
         Predicate<Account> accountFilter = account -> accountDescPredicate.test(account.name());
 
@@ -105,6 +114,10 @@ class EntryFilter {
 
     static Predicate<Entry> ENTRY_OF_DATE(Predicate<Instant> datePredicate) {
         return entry -> datePredicate.test(entry.occurredAt());
+    }
+
+    static Predicate<Entry> ENTRY_OF_APPLICATION_DATE(Predicate<Instant> datePredicate) {
+        return entry -> datePredicate.test(entry.appliesAt());
     }
 
     static Predicate<Entry> ENTRY_OF_METADATA(Predicate<Map<String, String>> metadataPredicate) {

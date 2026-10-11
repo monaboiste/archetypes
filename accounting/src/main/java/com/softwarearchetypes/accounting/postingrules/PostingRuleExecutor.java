@@ -34,7 +34,8 @@ class PostingRuleExecutor {
         for (PostingRule rule : rules) {
             if (rule.isEligible(context)) {
                 for (Transaction tx : rule.execute(context)) {
-                    compositeResult.accumulate(transactionExecutor.apply(tx));
+                    // Posting Rules (L10): retain each result so a failed posting stops subsequent commands.
+                    compositeResult = compositeResult.accumulate(transactionExecutor.apply(tx));
                     if (compositeResult.failure()) {
                         return compositeResult.toResult();
                     }
